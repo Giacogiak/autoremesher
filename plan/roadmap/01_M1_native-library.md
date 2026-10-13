@@ -55,6 +55,14 @@ has `gcc-c++` 16.2.1, `cmake` 4.4.3 and `dotnet-sdk-8.0` installed from the
 sibling project's own setup. Every build/test command in this plan's later
 phases must be run the same way.
 
+> **M1.1 measured (correction):** `-lz` is **not** linked. Nothing in this
+> library (or the GUI) includes zlib, and the toolbox has only
+> `libz.so.1` — no `libz.so` development symlink — so `-lz` fails to link.
+> `tbb_static`, unlike the shared `tbb` target, does not declare its own
+> `pthread`/`dl` link deps, so `autoremesher_core` links
+> `Threads::Threads` and `${CMAKE_DL_LIBS}` itself. `CMakeLists.txt` lives at
+> the repo root. See `HANDOFF_M1_TASK1.md`.
+
 ## Task 2 — extern "C" API
 
 Add `src/autoremesher_core_api.{h,cpp}` wrapping `AutoRemesher::AutoRemesher`
@@ -88,6 +96,14 @@ loads `source.obj`'s raw vertex/triangle arrays (no OBJ parser needed yet —
 hardcode a tiny synthetic mesh, or a minimal inline loader is fine here; the
 real OBJ I/O is M2's job), welds, and calls `remesh()` with defaults, asserting
 `quad_count > 0`.
+
+> **M1.1 measured:** `AutoRemesher` with its own constructor defaults does
+> **not** remesh — `m_targetTriangleCount` defaults to 0 and `remesh()` returns
+> `false` with "target triangle count must be greater than zero". "Defaults"
+> here has to mean the GUI's defaults: 50,000 target quads → `100000`
+> triangles (`mainwindow.cpp:1078`), scaling 1.0. With target 100000 (scaling
+> left unset) on welded `source.obj` it gave 25,988 quads in 37 s (Release,
+> 8-thread toolbox).
 
 ## Exit criteria
 
