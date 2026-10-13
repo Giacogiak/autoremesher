@@ -86,6 +86,20 @@ static void buildSphere(void)
     }
 }
 
+/* The sphere as a triangle soup: each triangle with its own three vertices,
+ * as an OBJ exporter that does not share vertices would write it. */
+static double soupVertices[sphereTriangleCount * 3 * 3];
+static uint32_t soupTriangles[sphereTriangleCount * 3];
+
+static void buildSoup(void)
+{
+    size_t i;
+    for (i = 0; i < sphereTriangleCount * 3; ++i) {
+        memcpy(&soupVertices[i * 3], &sphereVertices[sphereTriangles[i] * 3], 3 * sizeof(double));
+        soupTriangles[i] = (uint32_t)i;
+    }
+}
+
 typedef struct {
     int calls;
     int outOfRange;
@@ -258,6 +272,38 @@ int main(void)
     autoremesher_core_free_result(&result);
     CHECK(isZeroed(&result));
     autoremesher_core_free_result(&result);
+
+    /* Welding the soup gives back the sphere's vertices, every triangle at
+     * the same corner positions, and a mesh that remeshes. */
+    {
+        autoremesher_core_weld_result welded;
+        size_t i;
+        buildSoup();
+        CHECK(1 == autoremesher_core_weld(soupVertices, sphereTriangleCount * 3,
+                       soupTriangles, sphereTriangleCount, &welded));
+        CHECK(sphereVertexCount == welded.vertex_count);
+        CHECK(sphereTriangleCount == welded.triangle_count);
+        for (i = 0; i < welded.triangle_count * 3; ++i) {
+            CHECK(welded.triangle_indices[i] < welded.vertex_count);
+            CHECK(0 == memcmp(&welded.vertices[welded.triangle_indices[i] * 3],
+                           &soupVertices[i * 3], 3 * sizeof(double)));
+        }
+        printf("soup: %d vertices -> %zu welded\n", (int)(sphereTriangleCount * 3),
+            welded.vertex_count);
+
+        handle = autoremesher_core_create(welded.vertices, welded.vertex_count,
+            welded.triangle_indices, welded.triangle_count);
+        autoremesher_core_free_weld_result(&welded);
+        CHECK(NULL != handle);
+        autoremesher_core_set_target_quad_count(handle, 300);
+        CHECK(1 == autoremesher_core_remesh(handle));
+        CHECK(1 == autoremesher_core_get_result(handle, &result));
+        checkResult(&result);
+        printf("welded soup, target 300 quads: %zu faces, %zu quads\n",
+            result.face_count, result.quad_count);
+        autoremesher_core_free_result(&result);
+        autoremesher_core_destroy(handle);
+    }
 
     if (0 != failures) {
         fprintf(stderr, "%d check(s) failed\n", failures);

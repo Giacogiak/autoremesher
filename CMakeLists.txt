@@ -65,6 +65,7 @@ add_library(autoremesher_core SHARED
   thirdparty/meshoptimizer/src/simplifier.cpp
   thirdparty/meshoptimizer/src/indexgenerator.cpp
   src/autoremesher_core_api.cpp
+  src/weld.cpp
 )
 
 target_include_directories(autoremesher_core
@@ -111,3 +112,8 @@ add_executable(test_core_api tests/test_core_api.c)
 target_link_libraries(test_core_api PRIVATE autoremesher_core m)
 add_test(NAME test_core_api COMMAND test_core_api)
 set_tests_properties(test_core_api PROPERTIES TIMEOUT 300)
+
+# autoremesher_core_weld() on small hand-built meshes.
+add_executable(test_weld tests/test_weld.c)
+target_link_libraries(test_weld PRIVATE autoremesher_core)
+add_test(NAME test_weld COMMAND test_weld)

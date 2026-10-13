@@ -17,6 +17,10 @@
  *      }
  *      autoremesher_core_destroy(h);
  *
+ *  Input read from a file that does not share vertices between triangles
+ *  (an OBJ triangle soup) should go through autoremesher_core_weld() first,
+ *  and the welded arrays to autoremesher_core_create().
+ *
  *  A handle may be remeshed again after changing its settings; each
  *  autoremesher_core_remesh() call starts from the original input.  A handle
  *  must not be used from two threads at once.
@@ -120,6 +124,43 @@ AUTOREMESHER_CORE_API int autoremesher_core_get_result(const autoremesher_core* 
 /* Frees the arrays of `result` and zeroes it, so a second call is harmless.
  * NULL is accepted and ignored. */
 AUTOREMESHER_CORE_API void autoremesher_core_free_result(autoremesher_core_result* result);
+
+/* A welded triangle mesh, in arrays the library allocates and
+ * autoremesher_core_free_weld_result() releases. */
+typedef struct autoremesher_core_weld_result {
+    double* vertices; /* vertex_count * 3: x, y, z of each vertex */
+    size_t vertex_count;
+    uint32_t* triangle_indices; /* triangle_count * 3, 0-based into vertices */
+    size_t triangle_count;
+} autoremesher_core_weld_result;
+
+/* Merges vertices at the same position into one and remaps the triangles to
+ * match, with no tolerance parameter.  Positions are compared the way the
+ * core compares them internally (AutoRemesher::PositionKey): each coordinate
+ * times 1e5, truncated to an integer.  Same positions always merge; positions
+ * that differ by less than 1e-5 may also merge.
+ *
+ * Takes the same arrays as autoremesher_core_create() and needs no handle.
+ * The welded vertices keep the coordinates and order of the first input
+ * vertex at each position.  Every input vertex is welded, used or not, and
+ * every triangle is kept, so triangle_count is unchanged and a triangle that
+ * had two corners at one position ends up with a repeated index.
+ *
+ * Returns 1 and fills `result` on success; each success must be matched by
+ * one autoremesher_core_free_weld_result().  Returns 0 if `result` is NULL.
+ * Otherwise returns 0, with `result` zeroed, if an array is NULL with a
+ * non-zero count, if an index is out of range, if a coordinate is NaN, infinite or
+ * beyond about 9.2e13, or if memory runs out.  Empty input gives an empty
+ * mesh.  The input arrays are not modified. */
+AUTOREMESHER_CORE_API int autoremesher_core_weld(const double* vertices,
+    size_t vertex_count,
+    const uint32_t* triangle_indices,
+    size_t triangle_count,
+    autoremesher_core_weld_result* result);
+
+/* Frees the arrays of `result` and zeroes it, so a second call is harmless.
+ * NULL is accepted and ignored. */
+AUTOREMESHER_CORE_API void autoremesher_core_free_weld_result(autoremesher_core_weld_result* result);
 
 #ifdef __cplusplus
 }

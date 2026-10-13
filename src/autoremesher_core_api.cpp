@@ -2,7 +2,9 @@
  *  C ABI over AutoRemesher::AutoRemesher.  See autoremesher_core_api.h.
  */
 #include "autoremesher_core_api.h"
+#include "weld.h"
 #include <AutoRemesher/AutoRemesher>
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 #include <limits>
@@ -11,6 +13,13 @@
 #include <vector>
 
 namespace {
+
+// malloc(0) may return null, so allocate at least one element and only treat
+// null as failure when something was asked for.
+void* allocate(size_t count, size_t size)
+{
+    return std::malloc((0 == count ? 1 : count) * size);
+}
 
 // A setting the caller may or may not have given.  Unset ones are not passed
 // to the core, so its own defaults stay the single source of truth for them.
@@ -194,11 +203,6 @@ int autoremesher_core_get_result(const autoremesher_core* handle, autoremesher_c
             ++quadCount;
     }
 
-    // malloc(0) may return null, so allocate at least one element and only
-    // treat null as failure when something was asked for.
-    const auto allocate = [](size_t count, size_t size) {
-        return std::malloc((0 == count ? 1 : count) * size);
-    };
     result->vertices = static_cast<double*>(allocate(vertices.size() * 3, sizeof(double)));
     result->face_indices = static_cast<uint32_t*>(allocate(indexCount, sizeof(uint32_t)));
     result->face_sizes = static_cast<uint32_t*>(allocate(faces.size(), sizeof(uint32_t)));
@@ -232,6 +236,53 @@ void autoremesher_core_free_result(autoremesher_core_result* result)
     std::free(result->vertices);
     std::free(result->face_indices);
     std::free(result->face_sizes);
+    std::memset(result, 0, sizeof(*result));
+}
+
+int autoremesher_core_weld(const double* vertices,
+    size_t vertex_count,
+    const uint32_t* triangle_indices,
+    size_t triangle_count,
+    autoremesher_core_weld_result* result)
+{
+    if (nullptr == result)
+        return 0;
+    std::memset(result, 0, sizeof(*result));
+    if ((nullptr == vertices && 0 != vertex_count)
+        || (nullptr == triangle_indices && 0 != triangle_count))
+        return 0;
+
+    try {
+        std::vector<double> weldedVertices;
+        std::vector<uint32_t> weldedTriangleIndices;
+        if (!AutoRemesher::weldVertices(vertices, vertex_count, triangle_indices, triangle_count,
+                &weldedVertices, &weldedTriangleIndices))
+            return 0;
+
+        result->vertices = static_cast<double*>(allocate(weldedVertices.size(), sizeof(double)));
+        result->triangle_indices = static_cast<uint32_t*>(
+            allocate(weldedTriangleIndices.size(), sizeof(uint32_t)));
+        if (nullptr == result->vertices || nullptr == result->triangle_indices) {
+            autoremesher_core_free_weld_result(result);
+            return 0;
+        }
+        std::copy(weldedVertices.begin(), weldedVertices.end(), result->vertices);
+        std::copy(weldedTriangleIndices.begin(), weldedTriangleIndices.end(), result->triangle_indices);
+        result->vertex_count = weldedVertices.size() / 3;
+        result->triangle_count = triangle_count;
+        return 1;
+    } catch (...) {
+        autoremesher_core_free_weld_result(result);
+        return 0;
+    }
+}
+
+void autoremesher_core_free_weld_result(autoremesher_core_weld_result* result)
+{
+    if (nullptr == result)
+        return;
+    std::free(result->vertices);
+    std::free(result->triangle_indices);
     std::memset(result, 0, sizeof(*result));
 }
 

@@ -100,6 +100,14 @@ D2 — exact-position dedup only, no epsilon parameter). Expose it from the same
 C API as `autoremesher_core_weld(...)`, independent of `remesh()`, so the CLI
 (M2) and the C# demo (M5) can both call it before remeshing.
 
+> **M1.3 measured:** `autoremesher_core_weld()` (`src/weld.{h,cpp}`, keyed by
+> `PositionKey`) takes `source.obj`'s 97,400 vertices to **87,691** in 0.035 s,
+> with 175,566 triangles, none degenerate. The output is bit-identical to an
+> exact `std::tuple<double,double,double>` key, so `PositionKey`'s 1e-5 grid
+> merges nothing extra on this file. The result is a separate
+> `autoremesher_core_weld_result` struct, freed by
+> `autoremesher_core_free_weld_result()`. See `HANDOFF_M1_TASK3.md`.
+
 ## Task 4 — smoke test
 
 A throwaway `test_core.cpp` (or a CTest target) that links `autoremesher_core`,
