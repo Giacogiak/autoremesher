@@ -1,0 +1,128 @@
+/*
+ *  C ABI over AutoRemesher::AutoRemesher, for callers that cannot use the C++
+ *  class directly (the C# P/Invoke demo, dlopen from other languages).  Plain
+ *  C: no C++ types cross this boundary and no exception escapes it.
+ *
+ *  Usage:
+ *
+ *      autoremesher_core* h = autoremesher_core_create(vertices, vertex_count,
+ *          triangle_indices, triangle_count);
+ *      autoremesher_core_set_target_quad_count(h, 50000);
+ *      if (autoremesher_core_remesh(h)) {
+ *          autoremesher_core_result result;
+ *          if (autoremesher_core_get_result(h, &result)) {
+ *              ... read result ...
+ *              autoremesher_core_free_result(&result);
+ *          }
+ *      }
+ *      autoremesher_core_destroy(h);
+ *
+ *  A handle may be remeshed again after changing its settings; each
+ *  autoremesher_core_remesh() call starts from the original input.  A handle
+ *  must not be used from two threads at once.
+ */
+#ifndef AUTOREMESHER_CORE_API_H
+#define AUTOREMESHER_CORE_API_H
+
+#include <stddef.h>
+#include <stdint.h>
+
+#if defined(_WIN32)
+#if defined(AUTOREMESHER_CORE_BUILDING)
+#define AUTOREMESHER_CORE_API __declspec(dllexport)
+#else
+#define AUTOREMESHER_CORE_API __declspec(dllimport)
+#endif
+#else
+#define AUTOREMESHER_CORE_API __attribute__((visibility("default")))
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct autoremesher_core autoremesher_core;
+
+/* Same signature as AutoRemesher::AutoRemesherProgressHandler.  `progress` is
+ * 0..1 and `status` names the current step (never NULL, may be "").  When
+ * remeshing fails on invalid input, it is called once with progress 1 and the
+ * reason as `status`.  Calls come from the thread that called
+ * autoremesher_core_remesh() and from its worker threads, but never two at
+ * once.  `status` is only valid for the duration of the call. */
+typedef void (*autoremesher_core_progress_handler)(void* tag, float progress, const char* status);
+
+/* The remeshed mesh, in arrays the library allocates and
+ * autoremesher_core_free_result() releases.
+ *
+ * Faces are polygons, not always quads: the extractor also emits faces of 3,
+ * 5, 6 and 7 vertices.  Face i has face_sizes[i] vertices, which are the next
+ * face_sizes[i] entries of face_indices after those of faces 0..i-1. */
+typedef struct autoremesher_core_result {
+    double* vertices; /* vertex_count * 3: x, y, z of each vertex */
+    size_t vertex_count;
+    uint32_t* face_indices; /* index_count entries, 0-based into vertices */
+    size_t index_count;
+    uint32_t* face_sizes; /* face_count entries; they sum to index_count */
+    size_t face_count;
+    size_t quad_count; /* how many of the faces have exactly 4 vertices */
+} autoremesher_core_result;
+
+/* Copies the input mesh: `vertices` is vertex_count * 3 doubles (x, y, z),
+ * `triangle_indices` is triangle_count * 3 0-based indices.  Returns NULL if
+ * either array is NULL with a non-zero count, if an index is out of range, or
+ * if memory runs out.  Empty input is accepted; autoremesher_core_remesh()
+ * then fails. */
+AUTOREMESHER_CORE_API autoremesher_core* autoremesher_core_create(const double* vertices,
+    size_t vertex_count,
+    const uint32_t* triangle_indices,
+    size_t triangle_count);
+
+/* NULL is accepted and ignored. */
+AUTOREMESHER_CORE_API void autoremesher_core_destroy(autoremesher_core* handle);
+
+/* Target in quads, as the GUI's "Target Quads" field.  The core takes a
+ * triangle count, which is set to twice this (MainWindow's own convention).
+ * Must be set before remeshing: the core's default target is 0, which makes
+ * autoremesher_core_remesh() fail. */
+AUTOREMESHER_CORE_API void autoremesher_core_set_target_quad_count(autoremesher_core* handle,
+    size_t target_quad_count);
+
+/* The setters below map one to one onto AutoRemesher's.  Each takes effect
+ * only once called; until then the core's own default is used. */
+AUTOREMESHER_CORE_API void autoremesher_core_set_scaling(autoremesher_core* handle, double scaling);
+AUTOREMESHER_CORE_API void autoremesher_core_set_sharp_edge_degrees(autoremesher_core* handle,
+    double degrees);
+AUTOREMESHER_CORE_API void autoremesher_core_set_smooth_normal_degrees(autoremesher_core* handle,
+    double degrees);
+AUTOREMESHER_CORE_API void autoremesher_core_set_adaptivity(autoremesher_core* handle,
+    double adaptivity);
+AUTOREMESHER_CORE_API void autoremesher_core_set_anisotropy(autoremesher_core* handle,
+    double anisotropy);
+
+/* `handler` may be NULL to remove it.  `tag` is passed back to it verbatim. */
+AUTOREMESHER_CORE_API void autoremesher_core_set_progress_handler(autoremesher_core* handle,
+    autoremesher_core_progress_handler handler,
+    void* tag);
+
+/* Runs the remesher on the input given to autoremesher_core_create().
+ * Returns 1 on success and 0 on failure, in which case any earlier result is
+ * discarded too.  Blocks until done. */
+AUTOREMESHER_CORE_API int autoremesher_core_remesh(autoremesher_core* handle);
+
+/* Fills `result` with a copy of the last successful remesh.  Returns 1 on
+ * success.  Returns 0, with `result` zeroed, if there is no result or memory
+ * runs out.  Each successful call must be matched by one
+ * autoremesher_core_free_result(); the result stays valid after the handle is
+ * destroyed. */
+AUTOREMESHER_CORE_API int autoremesher_core_get_result(const autoremesher_core* handle,
+    autoremesher_core_result* result);
+
+/* Frees the arrays of `result` and zeroes it, so a second call is harmless.
+ * NULL is accepted and ignored. */
+AUTOREMESHER_CORE_API void autoremesher_core_free_result(autoremesher_core_result* result);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

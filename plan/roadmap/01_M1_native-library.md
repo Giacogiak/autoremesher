@@ -79,6 +79,17 @@ vertex_count`, `uint32_t* quad_indices, size_t quad_count` — flat, not
 marshaled cleanly from C#) that the caller must free via a matching
 `autoremesher_core_free_result()`.
 
+> **M1.2 measured (correction):** the output faces are **not all quads**.
+> `QuadExtractor` emits 3- to 7-gons, and on welded `source.obj` at 50,000
+> target quads the result has 25,988 faces: 25,932 quads, 52 pentagons and 4
+> triangles. A flat `quad_indices` array of 4 per face cannot hold that
+> (and the GUI's OBJ export and headless report keep the non-quads). So the
+> result is a polygon layout, still flat: `face_indices` + per-face
+> `face_sizes` + `quad_count` in an `autoremesher_core_result` struct, filled
+> by `autoremesher_core_get_result()`. The public header is
+> `<autoremesher_core_api.h>` (a forwarding header in `include/`, like
+> `<AutoRemesher/AutoRemesher>`). See `HANDOFF_M1_TASK2.md`.
+
 ## Task 3 — vertex welding utility
 
 Add a weld pass (e.g. `src/weld.{h,cpp}`, no Qt) that takes raw OBJ vertices

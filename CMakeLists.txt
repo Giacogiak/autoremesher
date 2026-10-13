@@ -7,7 +7,8 @@
 
 # 3.13 for target_link_options.
 cmake_minimum_required(VERSION 3.13...3.31)
-project(AutoRemesherCore CXX)
+# C is only for tests/test_core_api.c, which checks the API header is valid C.
+project(AutoRemesherCore C CXX)
 
 # The vendored TBB's CMakeLists.txt requests policy version 2.8, which
 # CMake >= 4.0 rejects unless a minimum policy version is supplied.
@@ -63,6 +64,7 @@ add_library(autoremesher_core SHARED
   thirdparty/isotropicremesher/axisalignedboundingboxtree.cpp
   thirdparty/meshoptimizer/src/simplifier.cpp
   thirdparty/meshoptimizer/src/indexgenerator.cpp
+  src/autoremesher_core_api.cpp
 )
 
 target_include_directories(autoremesher_core
@@ -77,6 +79,8 @@ target_include_directories(autoremesher_core
 
 # Same as autoremesher.pro (no-ops on Linux, kept for parity).
 target_compile_definitions(autoremesher_core PRIVATE _USE_MATH_DEFINES NOMINMAX)
+# Selects dllexport over dllimport in autoremesher_core_api.h (Windows only).
+target_compile_definitions(autoremesher_core PRIVATE AUTOREMESHER_CORE_BUILDING)
 
 # tbb_static does not declare its own pthread/dl dependencies (only the shared
 # tbb target does), so they are linked here. autoremesher.pro's unix:!macx block
@@ -101,3 +105,9 @@ add_test(NAME autoremesher_core_no_qt
   COMMAND ${CMAKE_COMMAND}
     -DLIBRARY=$<TARGET_FILE:autoremesher_core>
     -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/check_no_qt.cmake)
+
+# The extern "C" API, exercised from C on a small synthetic sphere.
+add_executable(test_core_api tests/test_core_api.c)
+target_link_libraries(test_core_api PRIVATE autoremesher_core m)
+add_test(NAME test_core_api COMMAND test_core_api)
+set_tests_properties(test_core_api PROPERTIES TIMEOUT 300)
