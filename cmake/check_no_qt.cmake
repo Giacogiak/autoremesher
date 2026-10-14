@@ -1,5 +1,5 @@
-# Fails if the shared library given as -DLIBRARY=<path> depends on Qt, either
-# directly (DT_NEEDED) or through anything it pulls in (ldd).
+# Fails if the shared library or executable given as -DLIBRARY=<path> depends
+# on Qt, either directly (DT_NEEDED) or through anything it pulls in (ldd).
 #
 #   cmake -DLIBRARY=build/libautoremesher_core.so -P cmake/check_no_qt.cmake
 

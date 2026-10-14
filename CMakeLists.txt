@@ -131,3 +131,28 @@ target_link_libraries(test_core PRIVATE autoremesher_core)
 add_test(NAME test_core COMMAND test_core ${AUTOREMESHER_SOURCE_OBJ})
 # One remesh of source.obj takes about 37 s in Release.
 set_tests_properties(test_core PROPERTIES TIMEOUT 600 SKIP_RETURN_CODE 77)
+
+# autoremesher-cli (M2): the GUI's headless mode as a standalone, Qt-free
+# executable over the C API.
+add_library(autoremesher_cli_options STATIC src/cli/cli_options.cpp)
+target_include_directories(autoremesher_cli_options PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+add_executable(autoremesher-cli src/cli/main.cpp src/cli/obj_io.cpp)
+target_link_libraries(autoremesher-cli PRIVATE autoremesher_core autoremesher_cli_options)
+
+# Exit criterion of M2: the executable must not depend on Qt either.
+add_test(NAME autoremesher_cli_no_qt
+  COMMAND ${CMAKE_COMMAND}
+    -DLIBRARY=$<TARGET_FILE:autoremesher-cli>
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/check_no_qt.cmake)
+
+add_executable(test_cli_options tests/test_cli_options.cpp)
+target_link_libraries(test_cli_options PRIVATE autoremesher_cli_options)
+add_test(NAME test_cli_options COMMAND test_cli_options)
+
+# The executable end to end, on a small synthetic sphere.
+add_executable(test_cli tests/test_cli.cpp)
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test_cli_scratch)
+add_test(NAME test_cli
+  COMMAND test_cli $<TARGET_FILE:autoremesher-cli> ${CMAKE_CURRENT_BINARY_DIR}/test_cli_scratch)
+set_tests_properties(test_cli PROPERTIES TIMEOUT 300)

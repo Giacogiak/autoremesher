@@ -13,6 +13,18 @@ runs (per D2, this is default behavior, not opt-in — mirrors the precedent in
 the sibling Instant Meshes project, where welding the source became the
 demo's unconditional default rather than a flag).
 
+> **M2.1 measured:** `build/autoremesher-cli` (sources in `src/cli/`) links
+> only `libautoremesher_core.so` and the C/C++ runtime — no Qt in `ldd`
+> (CTest `autoremesher_cli_no_qt`). Flags take `--name value` or
+> `--name=value`; the ranges above are enforced (exit 2 outside them — the
+> GUI's headless mode does not check them at all), and `--target-quads` must
+> be a whole number from 1 to 2³¹−1. `--report` is parsed but refused with
+> exit 2 until Task 3 implements it. The OBJ reader/writer in
+> `src/cli/obj_io.cpp` is a provisional copy of `test_core`'s loader, for
+> Task 2 to replace. On `source.obj`: the defaults give 25,932 quads of
+> 25,988 faces in 37.4 s (same as M1), and `--target-quads 11054` gives
+> 7,913 quads of 8,084 faces in 15.2 s. See `HANDOFF_M2_TASK1.md`.
+
 ## Task 2 — OBJ I/O without Qt
 
 A minimal reader tolerant of the `v x y z 0 0 0` format seen in `source.obj`
@@ -38,3 +50,15 @@ consistent report format regardless of which tool produced it.
 - Output OBJ is all-quad, non-empty, and vertex positions sit within
   `source.obj`'s bounding box (x ∈ [-67.63, 118.88], y ∈ [-38.89, 37.80],
   z ∈ [-39.88, 47.87], ±a small margin).
+
+> **M2.1 measured (correction to the second bullet):** the output is **not
+> all-quad**, and cannot be with the core as it is. `QuadExtractor` emits 3-
+> to 7-gons (see M1.2's correction in `01_M1_native-library.md`), and the
+> GUI's own OBJ export and headless report keep them. At
+> `--target-quads 11054` on welded `source.obj` the CLI writes 8,084 faces:
+> 7,913 quads (97.9 %), 165 pentagons, 6 triangles. Read the bullet as: a
+> non-empty polygon mesh, mostly quads (≈98 % here), every face index valid.
+> The bounding-box part holds: the output spans x ∈ [-65.98, 117.89],
+> y ∈ [-38.40, 37.24], z ∈ [-39.68, 47.72]. Whether the CLI should instead
+> convert the non-quads to quads is an open question for Giacomo; see
+> `HANDOFF_M2_TASK1.md`.
