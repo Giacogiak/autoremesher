@@ -2,6 +2,7 @@
  *  C ABI over AutoRemesher::AutoRemesher.  See autoremesher_core_api.h.
  */
 #include "autoremesher_core_api.h"
+#include "quad_split.h"
 #include "weld.h"
 #include <AutoRemesher/AutoRemesher>
 #include <algorithm>
@@ -237,6 +238,48 @@ void autoremesher_core_free_result(autoremesher_core_result* result)
     std::free(result->face_indices);
     std::free(result->face_sizes);
     std::memset(result, 0, sizeof(*result));
+}
+
+int autoremesher_core_split_into_quads(const autoremesher_core_result* mesh,
+    autoremesher_core_result* result)
+{
+    if (nullptr == result)
+        return 0;
+    std::memset(result, 0, sizeof(*result));
+    if (nullptr == mesh
+        || (nullptr == mesh->vertices && 0 != mesh->vertex_count)
+        || (nullptr == mesh->face_indices && 0 != mesh->index_count)
+        || (nullptr == mesh->face_sizes && 0 != mesh->face_count))
+        return 0;
+
+    try {
+        std::vector<double> splitVertices;
+        std::vector<uint32_t> quadIndices;
+        if (!AutoRemesher::splitIntoQuads(mesh->vertices, mesh->vertex_count,
+                mesh->face_indices, mesh->index_count, mesh->face_sizes, mesh->face_count,
+                &splitVertices, &quadIndices))
+            return 0;
+
+        const size_t quadCount = quadIndices.size() / 4;
+        result->vertices = static_cast<double*>(allocate(splitVertices.size(), sizeof(double)));
+        result->face_indices = static_cast<uint32_t*>(allocate(quadIndices.size(), sizeof(uint32_t)));
+        result->face_sizes = static_cast<uint32_t*>(allocate(quadCount, sizeof(uint32_t)));
+        if (nullptr == result->vertices || nullptr == result->face_indices || nullptr == result->face_sizes) {
+            autoremesher_core_free_result(result);
+            return 0;
+        }
+        std::copy(splitVertices.begin(), splitVertices.end(), result->vertices);
+        std::copy(quadIndices.begin(), quadIndices.end(), result->face_indices);
+        std::fill(result->face_sizes, result->face_sizes + quadCount, 4u);
+        result->vertex_count = splitVertices.size() / 3;
+        result->index_count = quadIndices.size();
+        result->face_count = quadCount;
+        result->quad_count = quadCount;
+        return 1;
+    } catch (...) {
+        autoremesher_core_free_result(result);
+        return 0;
+    }
 }
 
 int autoremesher_core_weld(const double* vertices,

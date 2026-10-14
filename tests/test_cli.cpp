@@ -5,6 +5,7 @@
  *
  *  Usage: test_cli <path to autoremesher-cli> <scratch directory>
  */
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -140,6 +141,7 @@ int main(int argc, char** argv)
     CHECK(0 == firstLine.compare(0, 15, "# AutoRemesher "));
     size_t vertexCount = 0, faceCount = 0, quadCount = 0, badIndices = 0, offSphere = 0;
     std::vector<size_t> faceIndices;
+    std::vector<double> radii;
     std::string line;
     while (std::getline(in, line)) {
         std::istringstream stream(line);
@@ -149,11 +151,7 @@ int main(int argc, char** argv)
             double x = 0, y = 0, z = 0;
             stream >> x >> y >> z;
             ++vertexCount;
-            // Remeshed vertices lie on the input's surface, whose flat facets
-            // sit at most about 1 % inside the unit sphere.
-            const double radius = std::sqrt(x * x + y * y + z * z);
-            if (!(radius > 0.98 && radius < 1.001))
-                ++offSphere;
+            radii.push_back(std::sqrt(x * x + y * y + z * z));
         } else if ("f" == tag) {
             size_t index = 0, size = 0;
             while (stream >> index) {
@@ -171,12 +169,45 @@ int main(int argc, char** argv)
         if (index < 1 || index > vertexCount)
             ++badIndices;
     }
-    std::printf("output: %zu vertices, %zu faces, %zu quads\n", vertexCount, faceCount, quadCount);
+    // Every face is split into quads (D6): corner 0 of each output quad is a
+    // vertex of the remesh, and corners 1 to 3 are the edge midpoints and
+    // face centroids the split adds.
+    size_t offChord = 0;
+    double lowestAdded = 2.0;
+    if (0 == badIndices && faceIndices.size() == faceCount * 4) {
+        std::vector<int> role(vertexCount, -1);
+        for (size_t i = 0; i < faceIndices.size(); ++i) {
+            const int corner = 0 == i % 4 ? 0 : 1;
+            int& known = role[faceIndices[i] - 1];
+            if (-1 != known && corner != known)
+                ++badIndices;
+            known = corner;
+        }
+        for (size_t i = 0; i < vertexCount; ++i) {
+            if (0 == role[i]) {
+                // Remeshed vertices lie on the input's surface, whose flat
+                // facets sit at most about 1 % inside the unit sphere.
+                if (!(radii[i] > 0.98 && radii[i] < 1.001))
+                    ++offSphere;
+            } else if (1 == role[i]) {
+                // Added ones are means of remeshed vertices, so they sit on
+                // chords of the sphere, further inside: 0.953 at worst here,
+                // with faces about 0.35 across.
+                lowestAdded = std::min(lowestAdded, radii[i]);
+                if (!(radii[i] > 0.9 && radii[i] < 1.001))
+                    ++offChord;
+            }
+        }
+    }
+    std::printf("output: %zu vertices, %zu faces, %zu quads; lowest added radius %.4f\n",
+        vertexCount, faceCount, quadCount, lowestAdded);
     CHECK(vertexCount > 0);
     CHECK(faceCount > 0);
     CHECK(quadCount * 10 >= faceCount * 9);
+    CHECK(quadCount == faceCount);
     CHECK(0 == badIndices);
     CHECK(0 == offSphere);
+    CHECK(0 == offChord);
 
     // Stdout: `status NN%` lines counting up to 100, then the GUI's report
     // block with the output's own counts, and nothing else.

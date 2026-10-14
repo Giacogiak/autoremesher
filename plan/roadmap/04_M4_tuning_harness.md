@@ -10,6 +10,14 @@ target's 11,054, not the CLI's 50,000 default; the other ranges are each
 parameter's full documented range from M2):
 
 - `--target-quads`: {8000, 9500, 11054, 12500, 14000}
+
+> **Warning from M2.3 (D6):** the CLI now splits every face of the core's
+> result into quads, so the output has about **4×** as many quads as
+> `--target-quads` asks: 11054 gives 32,495 quads, and 2764 gives 11,526.
+> Re-centre this dimension before sweeping: about 11,054 / 4 ≈ 2,760 lands
+> near the target's quad count, e.g. {2000, 2400, 2764, 3100, 3500}. The
+> value written in each report's `Target quads:` line is the pre-split
+> target. See `HANDOFF_M2_TASK3.md`.
 - `--edge-scaling`: {1.0, 1.5, 2.0, 2.5}
 - `--sharp-edge`: {60, 90, 120, 150}
 - `--smooth-normal`: {0, 30, 60}

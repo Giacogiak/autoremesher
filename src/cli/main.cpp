@@ -1,7 +1,8 @@
 /*
  *  autoremesher-cli: the GUI's headless mode (src/main.cpp) without Qt.
- *  Reads an OBJ, welds it, remeshes it through the autoremesher_core C API
- *  and writes the result as an OBJ, and with --report a report file.
+ *  Reads an OBJ, welds it, remeshes it through the autoremesher_core C API,
+ *  splits every face of the result into quads, and writes it as an OBJ, and
+ *  with --report a report file.
  *
  *  Stdout carries `status NN%` lines while it works, then the GUI's report
  *  block; the core's own diagnostics go to stderr.
@@ -102,19 +103,33 @@ int main(int argc, char** argv)
     }
     autoremesher_core_destroy(handle);
 
+    // Always split into quads, with no flag to turn it off (decision D6): the
+    // core also emits 3- and 5- to 7-gons, and the output must be all quads.
+    // Every face is split, quads too, so the output has about four times as
+    // many faces as the core made.
+    autoremesher_core_result quads;
+    const bool split = autoremesher_core_split_into_quads(&result, &quads);
+    std::fprintf(stderr, "%s: remeshed to %zu vertices, %zu faces (%zu quads, %zu non-quads)%s\n",
+        programName, result.vertex_count, result.face_count, result.quad_count,
+        result.face_count - result.quad_count,
+        split ? (", split into " + std::to_string(quads.face_count) + " quads").c_str() : "");
+    autoremesher_core_free_result(&result);
+    if (!split)
+        return fail("cannot split the remeshed faces of " + options.inputPath + " into quads");
+
     // Timed as the GUI times it: whole milliseconds (QElapsedTimer) from
-    // before the input is read until the remesh is done, not the writing.
+    // before the input is read until the mesh is made, not the writing.
     AutoRemesherCli::RunResult run;
     run.seconds = std::chrono::duration_cast<std::chrono::milliseconds>(
                       std::chrono::steady_clock::now() - start)
                       .count()
         / 1000.0;
-    run.vertexCount = result.vertex_count;
-    run.quadCount = result.quad_count;
-    run.nonQuadCount = result.face_count - result.quad_count;
+    run.vertexCount = quads.vertex_count;
+    run.quadCount = quads.quad_count;
+    run.nonQuadCount = quads.face_count - quads.quad_count;
 
-    const bool written = AutoRemesherCli::writeObj(options.outputPath, result, error);
-    autoremesher_core_free_result(&result);
+    const bool written = AutoRemesherCli::writeObj(options.outputPath, quads, error);
+    autoremesher_core_free_result(&quads);
     if (!written)
         return fail(error);
     if (!options.reportPath.empty()

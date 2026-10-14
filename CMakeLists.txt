@@ -66,6 +66,7 @@ add_library(autoremesher_core SHARED
   thirdparty/meshoptimizer/src/indexgenerator.cpp
   src/autoremesher_core_api.cpp
   src/weld.cpp
+  src/quad_split.cpp
 )
 
 target_include_directories(autoremesher_core
@@ -117,6 +118,11 @@ set_tests_properties(test_core_api PROPERTIES TIMEOUT 300)
 add_executable(test_weld tests/test_weld.c)
 target_link_libraries(test_weld PRIVATE autoremesher_core)
 add_test(NAME test_weld COMMAND test_weld)
+
+# autoremesher_core_split_into_quads() on small hand-built meshes.
+add_executable(test_split tests/test_split.c)
+target_link_libraries(test_split PRIVATE autoremesher_core)
+add_test(NAME test_split COMMAND test_split)
 
 # M1's smoke test: weld and remesh the real input, source.obj, at the GUI's
 # defaults. source.obj is not in git (*.obj is ignored), so the test is

@@ -72,9 +72,17 @@ consistent report format regardless of which tool produced it.
 > measured as the GUI measures it: whole milliseconds from before the input
 > is read to the end of the remesh, excluding the write. A run that fails
 > writes no report; an unwritable report exits 1 after the OBJ is written.
-> On `source.obj` at 11,054 target quads: 58 status lines over 15.3 s,
-> 7,913 quads, 171 non-quads, 8,060 vertices — M2.2's numbers, and a
-> byte-identical OBJ across runs. See `HANDOFF_M2_TASK3.md`.
+> On `source.obj` at 11,054 target quads: 58 status lines over 15.3 s.
+>
+> **M2.3, after D6** (Giacomo chose to split every face into quads; see
+> `plan/01_decisions.md`): the CLI now always calls the new
+> `autoremesher_core_split_into_quads()` after the remesh, so the OBJ and
+> both reports describe the **split** mesh. At 11,054 target quads the core
+> makes 8,084 faces (7,913 quads, 171 non-quads, 8,060 vertices), and the
+> output is **32,495 quads, 0 non-quads, 32,377 vertices**, in 15.0 s; the
+> defaults give 104,000 quads; `--target-quads 2764` gives 11,526. The
+> core's own counts go to stderr as one `remeshed to …` line. See
+> `HANDOFF_M2_TASK3.md`.
 
 ## Exit criteria
 
@@ -98,9 +106,11 @@ consistent report format regardless of which tool produced it.
 > convert the non-quads to quads is an open question for Giacomo; see
 > `HANDOFF_M2_TASK1.md`.
 
-> **M2.3 (phase end):** the first bullet holds (`ldd` lists no Qt; CTest
-> `autoremesher_cli_no_qt`; the run above had `DISPLAY`, `WAYLAND_DISPLAY`
-> and `QT_QPA_PLATFORM` unset). The second holds **only under M2.1's reading
-> above**: non-empty, every index valid, inside the bounding box, but 2.1 %
-> non-quads. Whether that reading is accepted is still Giacomo's call
-> (M2.1 Open #1), so M2 is not closed until that is answered.
+> **M2.3 (phase end):** both bullets hold **as originally written**; M2.1's
+> "mostly quads" reading above is superseded by D6. The first: `ldd` lists
+> no Qt, CTest `autoremesher_cli_no_qt` passes, and the run had `DISPLAY`,
+> `WAYLAND_DISPLAY` and `QT_QPA_PLATFORM` unset. The second: at
+> `--target-quads 11054` the output is 32,495 faces, **all quads**, every
+> index valid, spanning x ∈ [-65.9775, 117.889], y ∈ [-38.4004, 37.2365],
+> z ∈ [-39.6777, 47.7157] — inside `source.obj`'s box (the split only adds
+> means of existing vertices, so it cannot leave the box).

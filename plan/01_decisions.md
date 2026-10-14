@@ -7,6 +7,7 @@
 | D3 | Decided | — |
 | D4 | Decided | — |
 | D5 | Open | M4 |
+| D6 | Decided | — |
 
 ## D1 — Build system
 
@@ -36,3 +37,16 @@ score for M4. Cannot be decided before M3's scorer exists and M4's Task 1 has
 produced real score distributions to weigh against each other — a guessed
 weighting risks optimizing for the wrong thing across the whole sweep.
 Blocks: M4 (specifically M4's Task 2, ranking).
+
+## D6 — Non-quad faces in the output
+
+**Decided (Giacomo Forcina, 2026-10-14):** the core's `QuadExtractor` also
+emits 3- and 5- to 7-gons (2.1 % of the faces at 11,054 target quads on
+`source.obj`). The CLI post-processes its result to all-quad by splitting
+every face into quads, Catmull–Clark style: an n-gon becomes n quads, so
+quads are split too. Accepted consequences: the output is always pure quads;
+the face count grows about 4×, so `--target-quads` no longer directly sets
+the final face count; the output diverges from what the GUI produces for the
+same input. Raised by M2.1 (Open #1), implemented in M2.3 as
+`autoremesher_core_split_into_quads()`, which the CLI always calls.
+

@@ -125,6 +125,33 @@ AUTOREMESHER_CORE_API int autoremesher_core_get_result(const autoremesher_core* 
  * NULL is accepted and ignored. */
 AUTOREMESHER_CORE_API void autoremesher_core_free_result(autoremesher_core_result* result);
 
+/* Splits every face of `mesh` into quads, as one step of Catmull-Clark
+ * subdivision splits them, but without its smoothing: an n-gon becomes n
+ * quads, so a quad becomes four and the result is all quads (decision D6).
+ * Needs no handle; `mesh` is typically a result of
+ * autoremesher_core_get_result().
+ *
+ * The result's vertices are, in order: the input's, unchanged; then the
+ * midpoint of every edge, in order of first use (faces in order, each face's
+ * edges from corner j to corner j+1), an edge shared by two faces getting one
+ * midpoint whichever way round each uses it; then the centroid (the mean of
+ * the corners) of every face, in face order.  Corner j of an input face gives
+ * the quad (corner j, midpoint of the edge leaving it, centroid, midpoint of
+ * the edge entering it), so the winding is kept, and the quads of face i come
+ * before those of face i+1.  Nothing is moved, merged or dropped: unused
+ * vertices are kept, and a face with a repeated corner is split like any
+ * other.  mesh->quad_count is not read.
+ *
+ * Returns 1 and fills `result` on success; each success must be matched by
+ * one autoremesher_core_free_result().  Returns 0 if `result` is NULL.
+ * Otherwise returns 0, with `result` zeroed, if `mesh` is NULL, if an array
+ * is NULL with a non-zero count, if the face sizes do not sum to index_count,
+ * if a face has fewer than 3 corners, if an index is out of range, if the
+ * result would have more than 2^32 vertices, or if memory runs out.  An empty
+ * mesh gives an empty mesh.  `mesh` is not modified. */
+AUTOREMESHER_CORE_API int autoremesher_core_split_into_quads(const autoremesher_core_result* mesh,
+    autoremesher_core_result* result);
+
 /* A welded triangle mesh, in arrays the library allocates and
  * autoremesher_core_free_weld_result() releases. */
 typedef struct autoremesher_core_weld_result {
