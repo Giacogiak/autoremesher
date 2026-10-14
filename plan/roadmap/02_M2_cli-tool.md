@@ -72,7 +72,7 @@ consistent report format regardless of which tool produced it.
 > measured as the GUI measures it: whole milliseconds from before the input
 > is read to the end of the remesh, excluding the write. A run that fails
 > writes no report; an unwritable report exits 1 after the OBJ is written.
-> On `source.obj` at 11,054 target quads: 63 status lines over 15.3 s,
+> On `source.obj` at 11,054 target quads: 58 status lines over 15.3 s,
 > 7,913 quads, 171 non-quads, 8,060 vertices — M2.2's numbers, and a
 > byte-identical OBJ across runs. See `HANDOFF_M2_TASK3.md`.
 
