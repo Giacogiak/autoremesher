@@ -294,6 +294,37 @@ class Metrics(Tmp):
         assert_self_score(self, r)
         self.assertEqual(r['degenerate_quads']['candidate'], 1)
 
+    def test_self_score_mismatches_sees_every_metric(self):
+        V, F = grid(3, 2, xs=[0, 1, 2, 4], z=0.5)
+        F = F + [[0, 1, 5], [1, 2, 2, 6]]   # a triangle and a degenerate quad
+        r = self.score((V, F), grid(2, 2))
+        bad = self_score_mismatches(r)
+        self.assertEqual({b.split('.')[0] for b in bad},
+                         {'quads', 'non_quad_faces', 'vertices', 'edge_length_cv',
+                          'fit', 'fit_reverse', 'degenerate_quads'})
+        for stat in ('mean', 'rms', 'p95', 'max', 'mean_rel', 'rms_rel', 'p95_rel',
+                     'max_rel'):
+            self.assertIn('fit.' + stat, bad)
+            self.assertIn('fit_reverse.' + stat, bad)
+        self.assertNotIn('fit.samples', bad)
+
+
+def self_score_mismatches(r):
+    """The fields of a score record that a self-score must have zero, and
+    don't: every delta, every distance, and candidate == target in every
+    metric that has both. Walks the record, so a field added later is covered."""
+    bad = []
+    for key, m in r.items():
+        if not isinstance(m, dict):
+            continue
+        if 'candidate' in m and m['candidate'] != m['target']:
+            bad.append(key + '.candidate')
+        for k, v in m.items():
+            if k.startswith('delta') or (key.startswith('fit') and k != 'samples'):
+                if v != 0:
+                    bad.append(key + '.' + k)
+    return bad
+
 
 def assert_self_score(test, r):
     test.assertEqual(r['quads']['delta'], 0)
@@ -365,6 +396,12 @@ class RhinoTarget(unittest.TestCase):
         self.assertEqual(r['quads']['target'], 11054)
         self.assertEqual(r['non_quad_faces']['target'], 0)
         self.assertEqual(r['degenerate_quads']['target'], 0)
+
+    def test_self_score_every_field(self):
+        # M3.2's sanity check: zero delta on every metric of the record
+        r = S.score(TARGET_OBJ, TARGET_OBJ)
+        self.assertEqual(self_score_mismatches(r), [])
+        self.assertEqual(r['fit']['samples'], r['vertices']['target'])
 
 
 if __name__ == '__main__':
