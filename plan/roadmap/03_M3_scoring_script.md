@@ -35,6 +35,14 @@ zero delta on every metric (self-score sanity check). Running it on M2's CLI
 output (default parameters) against `quad-remeshed.obj` establishes the
 baseline score this plan is trying to improve on in M4.
 
+> **Done in M3.2** (`HANDOFF_M3_TASK2.md`). The self-score is exactly zero on
+> every field, and CTest `test_score_remesh` now checks every field of it, not
+> a hand-picked list. The baseline (CLI defaults: 104,000 quads, +840.8 %;
+> edge CV 0.3681, Δ −0.1871; fit mean 0.0734, p95 0.233; fit_reverse mean
+> 0.0491; 0 degenerate) is in the handoff, with full-precision records in
+> `plan/baselines/m3_baseline.jsonl`: line 1 the self-score, line 2 the
+> defaults baseline, line 3 `--target-quads 2764` for reference.
+
 ## Exit criteria
 
 - Self-score sanity check passes (all deltas zero).
