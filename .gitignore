@@ -51,3 +51,5 @@ moc/
 .plan-run/
 # Python bytecode (tests/test_score_remesh.py imports scripts/score_remesh.py)
 __pycache__/
+# M4 sweep trials: meshes, reports and CLI logs (sweep_results.jsonl is kept)
+tuning_runs/trials/

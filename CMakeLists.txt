@@ -212,6 +212,12 @@ if (Python3_Interpreter_FOUND)
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_score_remesh.py)
   set_tests_properties(test_score_remesh PROPERTIES TIMEOUT 300
     ENVIRONMENT "AUTOREMESHER_TARGET_OBJ=${CMAKE_CURRENT_SOURCE_DIR}/quad-remeshed.obj")
+  # M4's sweep harness, scripts/tune_params.py, against a fake CLI, and one real
+  # trial on source.obj, skipped where the meshes are missing
+  add_test(NAME test_tune_params
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_tune_params.py)
+  set_tests_properties(test_tune_params PROPERTIES TIMEOUT 300
+    ENVIRONMENT "AUTOREMESHER_CLI=$<TARGET_FILE:autoremesher-cli>;AUTOREMESHER_SOURCE_OBJ=${AUTOREMESHER_SOURCE_OBJ};AUTOREMESHER_TARGET_OBJ=${CMAKE_CURRENT_SOURCE_DIR}/quad-remeshed.obj")
 else()
-  message(WARNING "No Python 3 interpreter found; test_score_remesh will not run")
+  message(WARNING "No Python 3 interpreter found; test_score_remesh and test_tune_params will not run")
 endif()
