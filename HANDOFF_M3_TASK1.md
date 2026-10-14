@@ -14,6 +14,7 @@ official baseline.
 | `scripts/score_remesh.py` (new) | The scorer, described below. It is executable and needs only numpy and scipy. |
 | `tests/test_score_remesh.py` (new) | `unittest` tests, 26 of them (pytest is not installed). They run on synthetic meshes whose metrics are known by hand, and on a self-score of `quad-remeshed.obj` where the file exists. |
 | `CMakeLists.txt` | Adds CTest `test_score_remesh`, which runs the test file with `find_package(Python3 COMPONENTS Interpreter)`'s interpreter. `AUTOREMESHER_TARGET_OBJ` points it at `quad-remeshed.obj`. If no interpreter is found, the test is not added and CMake prints a warning. |
+| `.gitignore` | Adds `__pycache__/`. The test imports the script, which writes `scripts/__pycache__/` and would otherwise leave the tree dirty after every CI run. |
 | `plan/roadmap/03_M3_scoring_script.md` | A note under Task 1: the command line, the exact-surface fit, the extra `fit_reverse`, and that the target's quad count is read from the file. No criterion changed. |
 
 ### Command line
