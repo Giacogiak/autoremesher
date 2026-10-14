@@ -28,6 +28,9 @@ import rank_trials as R  # noqa: E402
 SWEEP = os.path.join(ROOT, 'tuning_runs', 'sweep_results.jsonl')
 RANKING = os.path.join(ROOT, 'tuning_runs', 'ranking.json')
 BASELINE = os.path.join(ROOT, 'plan', 'baselines', 'm3_baseline.jsonl')
+UNSPLIT_SWEEP = os.path.join(ROOT, 'tuning_runs', 'unsplit', 'sweep_results.jsonl')
+UNSPLIT_RANKING = os.path.join(ROOT, 'tuning_runs', 'unsplit', 'ranking.json')
+UNSPLIT_BASELINE = os.path.join(ROOT, 'plan', 'baselines', 'm3_baseline_unsplit.jsonl')
 
 TARGET_QUADS = 11054
 TARGET_CV = 0.5551583668863462
@@ -398,6 +401,93 @@ class Committed(unittest.TestCase):
         self.assertLess(ranked[0]['fit_mean'], ref['fit_mean'])
         self.assertLess(ranked[0]['fit_reverse_mean'], ref['fit_reverse_mean'])
 
+
+
+def rerank_committed(sweep, ranking):
+    """(the committed ranking, what rank_trials.py makes of the committed sweep
+    with the band and baselines that ranking records)"""
+    with open(ranking) as f:
+        committed = json.load(f)
+    argv = ['--results', os.path.relpath(sweep, ROOT), '--band', repr(committed['band_pct'])]
+    for b in committed['baselines']:
+        argv += ['--baseline', '%s:%d' % (b['file'], b['line'])]
+    with tempfile.TemporaryDirectory() as d:
+        js = os.path.join(d, 'ranking.json')
+        cwd = os.getcwd()
+        os.chdir(ROOT)
+        try:
+            code, _, err = run_main(argv + ['--json', js])
+        finally:
+            os.chdir(cwd)
+        if code != 0:
+            raise AssertionError('rank_trials.py exited %d: %s' % (code, err))
+        with open(js) as f:
+            return committed, json.load(f)
+
+
+def defaults_but_target_quads(params):
+    return all(params[k] == v for k, v in (('edge_scaling', 1.0), ('sharp_edge', 90.0),
+                                           ('smooth_normal', 0.0), ('adaptivity', 1.0),
+                                           ('anisotropy', 1.0)))
+
+
+@unittest.skipUnless(os.path.exists(UNSPLIT_SWEEP) and os.path.exists(UNSPLIT_RANKING),
+                     'needs tuning_runs/unsplit/sweep_results.jsonl and ranking.json')
+class CommittedUnsplit(unittest.TestCase):
+    """M4.3's sweep of the unsplit CLI output (D6 reversed)"""
+
+    @classmethod
+    def setUpClass(cls):
+        with open(UNSPLIT_SWEEP) as f:
+            cls.records = [json.loads(line) for line in f if line.strip()]
+        cls.ranked, _ = R.rank(cls.records, band_pct=15.0)
+
+    def test_ranking_json_is_up_to_date(self):
+        committed, fresh = rerank_committed(UNSPLIT_SWEEP, UNSPLIT_RANKING)
+        self.assertEqual(fresh, committed)
+        self.assertEqual(committed['band_pct'], 15.0)
+
+    def test_every_trial_is_unsplit(self):
+        # the CLI was run without --split-to-quads: no argv has it, and the
+        # core's own output has some non-quads
+        for r in self.records:
+            self.assertNotIn('--split-to-quads', r['cli']['argv'], r['trial'])
+        self.assertTrue(all(e['non_quad_faces'] > 0 for e in self.ranked))
+
+    def test_winner(self):
+        self.assertEqual(self.ranked[0]['trial'], 'tq30000_es1.25_se90_sn0_ad0.5_an1')
+        self.assertEqual(self.ranked[0]['output_sha256'][:8], 'fdbaf07b')
+
+    def test_winner_beats_the_defaults_at_the_targets_quad_count(self):
+        # M4's exit criterion 1 after D6's reversal. M3.3's record of the
+        # defaults at --target-quads 11054 (m3_baseline_unsplit.jsonl:3) lands at
+        # -28.4 %, outside the gate, so the like-for-like reference is the
+        # sweep's defaults-only trial nearest the target's count: every
+        # parameter at the CLI's default but target-quads
+        defaults = [e for e in self.ranked if defaults_but_target_quads(e['params'])]
+        ref = min(defaults, key=lambda e: abs(e['delta_pct']))
+        self.assertEqual(ref['trial'], 'tq15500_es1_se90_sn0_ad1_an1')
+        self.assertLess(abs(ref['delta_pct']), 2.0)
+        win = self.ranked[0]
+        # materially better: at least 20 % lower combined fit, and better in
+        # both directions, mean and p95
+        self.assertLess(win['combined_fit'], 0.8 * ref['combined_fit'])
+        for k in ('fit_mean', 'fit_reverse_mean', 'fit_p95', 'fit_reverse_p95'):
+            self.assertLess(win[k], ref[k], k)
+        # and better than every defaults-only trial in the gate, denser ones too
+        self.assertLess(win['combined_fit'], min(e['combined_fit'] for e in defaults))
+
+    @unittest.skipUnless(os.path.exists(UNSPLIT_BASELINE),
+                         'needs plan/baselines/m3_baseline_unsplit.jsonl')
+    def test_winner_against_m3s_unsplit_records(self):
+        line2 = R.baseline_entry(R.load_baseline(UNSPLIT_BASELINE + ':2'), 15.0)
+        line3 = R.baseline_entry(R.load_baseline(UNSPLIT_BASELINE + ':3'), 15.0)
+        # both fall outside D5's gate: +134.6 % and -28.4 %
+        self.assertEqual((line2['gate'], line2['quads']), ('outside_band', 25932))
+        self.assertEqual((line3['gate'], line3['quads']), ('outside_band', 7913))
+        win = self.ranked[0]
+        # with ~40 % more quads than line 3, the winner halves its combined fit
+        self.assertLess(win['combined_fit'], 0.55 * line3['combined_fit'])
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
