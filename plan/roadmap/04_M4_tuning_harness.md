@@ -33,12 +33,26 @@ approach was used and why in this phase's handoff.
 ## Task 2 — ranking
 
 A ranking step (`scripts/rank_trials.py`, or inline in the sweep script) that
-combines M3's separate metrics into one ordering and reports the top N trials.
-**D5 — scoring metric weighting is an open decision**, to be decided only
-after Task 1 produces real score distributions across trials (weighting
-quad-count-delta vs. edge-length-CV vs. spatial-fit vs. degenerate-count
-cannot be chosen sensibly before seeing how much each one actually varies
-across the sweep). See `plan/01_decisions.md`.
+combines M3's separate metrics into one ordering and reports the top N trials,
+per **D5** (`plan/01_decisions.md`), decided 2026-10-14:
+
+1. **Disqualify** any trial with a nonzero degenerate-quad count.
+2. **Gate on quad count:** discard any surviving trial whose quad count falls
+   outside a tolerance band around the target's 11,054 quads. Pick the exact
+   band (±15–20% suggested) from the sweep's actual quad-count spread —
+   record whatever value is chosen and why.
+3. **Rank the survivors by combined spatial fit** — `fit` and `fit_reverse`
+   from M3's scorer (mean, or another single statistic of them; record which
+   and why), lower is better.
+4. **Tie-break by edge-length CV**, scored by closeness to the *target's*
+   CV (0.5552), not by minimizing it — a trial whose CV is further from
+   0.5552 ranks worse, even if its CV is numerically lower.
+
+If the quad-count gate leaves zero survivors, widen it and say so in the
+handoff rather than silently falling back to ungated fit-ranking (ungated
+fit-ranking just picks the densest mesh in the sweep — this is exactly what
+D5 exists to prevent; see `HANDOFF_M3_TASK2.md` Open #1 for the measurement
+that motivated it).
 
 ## Exit criteria
 

@@ -6,7 +6,7 @@
 | D2 | Decided | — |
 | D3 | Decided | — |
 | D4 | Decided | — |
-| D5 | Open | M4 |
+| D5 | Decided | — |
 | D6 | Decided | — |
 
 ## D1 — Build system
@@ -31,12 +31,27 @@ exposed as a CLI flag or tuning dimension.
 
 ## D5 — Scoring metric weighting
 
-**Open.** How to combine M3's separate metrics (quad-count delta,
-edge-length CV, spatial-fit distance, degenerate-quad count) into one ranking
-score for M4. Cannot be decided before M3's scorer exists and M4's Task 1 has
-produced real score distributions to weigh against each other — a guessed
-weighting risks optimizing for the wrong thing across the whole sweep.
-Blocks: M4 (specifically M4's Task 2, ranking).
+**Decided (Giacomo Forcina, 2026-10-14):** fit-primary ranking with a
+quad-count gate. First discard any trial whose quad count falls outside a
+tolerance band around the target's 11,054 (±15–20%, M4 to pick the exact
+band). Among survivors, rank by combined spatial fit (`fit` + `fit_reverse`),
+with edge-length CV as a tie-breaker. Degenerate-quad count is a hard
+disqualifier (any trial with degenerate quads is dropped), not part of the
+score.
+
+Reason: M3's baseline measurement showed pure fit-ranking would just reward
+ever-denser meshes — the CLI's 104,000-quad default output has far better fit
+(mean 0.073) than a trial matched to the target's actual quad count (2,764
+quads, mean fit 0.573), purely because denser meshes trivially fit the source
+surface better. The gate exists specifically to stop the sweep from picking
+that kind of trial.
+
+**CV direction:** scored by closeness to the *target's own* CV (0.5552), not
+by minimizing CV. Every CLI output measured so far is more uniform than the
+Rhino target, and the target is the thing being replicated — matching its
+edge-length variation is the goal, not independently rewarding uniformity.
+
+Blocks: — (was M4, now unlocked).
 
 ## D6 — Non-quad faces in the output
 

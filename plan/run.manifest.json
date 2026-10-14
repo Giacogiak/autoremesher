@@ -34,12 +34,8 @@
 		"gitPolicy": {
 			"noPush": true
 		},
-		"stopUnits": [
-			"M4"
-		],
-		"stopUnitsWhy": {
-			"M4": "D5 (scoring metric weighting) is open — see plan/01_decisions.md. It needs M3's real score distributions across the sweep before it can be answered; a guessed weighting risks ranking trials on the wrong thing."
-		},
+		"stopUnits": [],
+		"stopUnitsWhy": {},
 		"stopKeywords": [
 			"deferred",
 			"conditional",
