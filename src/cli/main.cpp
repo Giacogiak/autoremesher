@@ -1,13 +1,17 @@
 /*
  *  autoremesher-cli: the GUI's headless mode (src/main.cpp) without Qt.
  *  Reads an OBJ, welds it, remeshes it through the autoremesher_core C API
- *  and writes the result as an OBJ.
+ *  and writes the result as an OBJ, and with --report a report file.
+ *
+ *  Stdout carries `status NN%` lines while it works, then the GUI's report
+ *  block; the core's own diagnostics go to stderr.
  *
  *  Exit status: 0 on success, 1 if reading, remeshing or writing fails, 2 on
  *  a usage error.
  */
 #include "cli_options.h"
 #include "obj_io.h"
+#include "report.h"
 #include <autoremesher_core_api.h>
 #include <chrono>
 #include <cstdio>
@@ -24,11 +28,23 @@ int fail(const std::string& message)
     return 1;
 }
 
-// The core reports why a remesh failed only through the progress handler,
-// as its last status.
-void recordStatus(void* tag, float, const char* status)
+struct Progress {
+    AutoRemesherCli::ProgressLines lines;
+    // The core reports why a remesh failed only through the progress
+    // handler, as its last status.
+    std::string lastStatus;
+};
+
+void reportProgress(void* tag, float progress, const char* status)
 {
-    *static_cast<std::string*>(tag) = status;
+    Progress* state = static_cast<Progress*>(tag);
+    state->lastStatus = status;
+    const std::string line = state->lines.update(progress);
+    if (!line.empty()) {
+        // Flushed, so that a script reading through a pipe sees it now.
+        std::fputs(line.c_str(), stdout);
+        std::fflush(stdout);
+    }
 }
 
 }
@@ -46,12 +62,6 @@ int main(int argc, char** argv)
         std::fputs(AutoRemesherCli::usage(programName).c_str(), stdout);
         return 0;
     }
-    if (!options.reportPath.empty()) {
-        // Lands with M2 Task 3; refused rather than silently ignored until then.
-        std::fprintf(stderr, "%s: --report is not implemented yet\n", programName);
-        return 2;
-    }
-
     const auto start = std::chrono::steady_clock::now();
 
     std::vector<double> rawVertices;
@@ -81,29 +91,38 @@ int main(int argc, char** argv)
     autoremesher_core_set_smooth_normal_degrees(handle, options.smoothNormalDegrees);
     autoremesher_core_set_adaptivity(handle, options.adaptivity);
     autoremesher_core_set_anisotropy(handle, options.anisotropy);
-    std::string lastStatus;
-    autoremesher_core_set_progress_handler(handle, recordStatus, &lastStatus);
+    Progress progress;
+    autoremesher_core_set_progress_handler(handle, reportProgress, &progress);
 
     autoremesher_core_result result;
     if (!autoremesher_core_remesh(handle) || !autoremesher_core_get_result(handle, &result)) {
         autoremesher_core_destroy(handle);
         return fail("remeshing " + options.inputPath + " failed"
-            + (lastStatus.empty() ? std::string() : ": " + lastStatus));
+            + (progress.lastStatus.empty() ? std::string() : ": " + progress.lastStatus));
     }
     autoremesher_core_destroy(handle);
 
+    // Timed as the GUI times it: whole milliseconds (QElapsedTimer) from
+    // before the input is read until the remesh is done, not the writing.
+    AutoRemesherCli::RunResult run;
+    run.seconds = std::chrono::duration_cast<std::chrono::milliseconds>(
+                      std::chrono::steady_clock::now() - start)
+                      .count()
+        / 1000.0;
+    run.vertexCount = result.vertex_count;
+    run.quadCount = result.quad_count;
+    run.nonQuadCount = result.face_count - result.quad_count;
+
     const bool written = AutoRemesherCli::writeObj(options.outputPath, result, error);
-    const size_t vertexCount = result.vertex_count;
-    const size_t faceCount = result.face_count;
-    const size_t quadCount = result.quad_count;
     autoremesher_core_free_result(&result);
     if (!written)
         return fail(error);
+    if (!options.reportPath.empty()
+        && !AutoRemesherCli::writeReport(options.reportPath,
+            AutoRemesherCli::reportFile(options, run), error))
+        return fail(error);
 
-    const double seconds
-        = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
-    std::printf("%s: %zu vertices, %zu faces (%zu quads, %zu non-quads), %.1f s\n",
-        options.outputPath.c_str(), vertexCount, faceCount, quadCount, faceCount - quadCount,
-        seconds);
+    std::fputs(progress.lines.done().c_str(), stdout);
+    std::fputs(AutoRemesherCli::reportSummary(options, run).c_str(), stdout);
     return 0;
 }

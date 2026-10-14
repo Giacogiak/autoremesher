@@ -159,9 +159,14 @@ target_compile_definitions(autoremesher_cli_obj_io PUBLIC
   "AUTOREMESHER_APP_HUMAN_VER=\"${AUTOREMESHER_APP_HUMAN_VER}\""
   "AUTOREMESHER_APP_HOMEPAGE_URL=\"${AUTOREMESHER_APP_HOMEPAGE_URL}\"")
 
+# The progress lines and the two reports, in the GUI headless mode's formats.
+add_library(autoremesher_cli_report STATIC src/cli/report.cpp)
+target_link_libraries(autoremesher_cli_report PUBLIC autoremesher_cli_options
+  autoremesher_cli_obj_io)
+
 add_executable(autoremesher-cli src/cli/main.cpp)
 target_link_libraries(autoremesher-cli PRIVATE autoremesher_core autoremesher_cli_options
-  autoremesher_cli_obj_io)
+  autoremesher_cli_obj_io autoremesher_cli_report)
 
 # Exit criterion of M2: the executable must not depend on Qt either.
 add_test(NAME autoremesher_cli_no_qt
@@ -179,6 +184,11 @@ file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test_obj_io_scratch)
 # source.obj's own checks are skipped inside the test where the file is missing.
 add_test(NAME test_obj_io
   COMMAND test_obj_io ${CMAKE_CURRENT_BINARY_DIR}/test_obj_io_scratch ${AUTOREMESHER_SOURCE_OBJ})
+
+add_executable(test_report tests/test_report.cpp)
+target_link_libraries(test_report PRIVATE autoremesher_cli_report)
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test_report_scratch)
+add_test(NAME test_report COMMAND test_report ${CMAKE_CURRENT_BINARY_DIR}/test_report_scratch)
 
 # The executable end to end, on a small synthetic sphere.
 add_executable(test_cli tests/test_cli.cpp)

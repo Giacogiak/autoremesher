@@ -1,6 +1,7 @@
 /*
  *  Runs the autoremesher-cli executable end to end on a small synthetic
- *  sphere, and checks its exit status on bad command lines.
+ *  sphere, checks what it prints and the report it writes, and checks its
+ *  exit status on bad command lines.
  *
  *  Usage: test_cli <path to autoremesher-cli> <scratch directory>
  */
@@ -96,6 +97,16 @@ bool exists(const std::string& path)
     return std::ifstream(path).good();
 }
 
+std::vector<std::string> readLines(const std::string& path)
+{
+    std::vector<std::string> lines;
+    std::ifstream in(path);
+    std::string line;
+    while (std::getline(in, line))
+        lines.push_back(line);
+    return lines;
+}
+
 }
 
 int main(int argc, char** argv)
@@ -111,11 +122,14 @@ int main(int argc, char** argv)
     writeSphereSoup(input);
     std::remove(output.c_str());
 
-    // Every flag, set to a value that differs from its default, except
-    // --report, which is not implemented yet.
+    // Every flag, set to a value that differs from its default.
+    const std::string report = scratch + "/sphere_report.txt";
+    const std::string printed = scratch + "/sphere_stdout.txt";
+    std::remove(report.c_str());
     CHECK(0 == run("-i '" + input + "' --output='" + output + "' --target-quads 300"
                        " --edge-scaling 1.5 --sharp-edge 60 --smooth-normal 10"
-                       " --adaptivity 0.5 --anisotropy 0.5"));
+                       " --adaptivity 0.5 --anisotropy 0.5 --report '" + report + "' > '"
+            + printed + "'"));
 
     // The output: a non-empty polygon mesh, mostly quads, on the unit sphere.
     std::ifstream in(output);
@@ -164,6 +178,72 @@ int main(int argc, char** argv)
     CHECK(0 == badIndices);
     CHECK(0 == offSphere);
 
+    // Stdout: `status NN%` lines counting up to 100, then the GUI's report
+    // block with the output's own counts, and nothing else.
+    const std::vector<std::string> stdoutLines = readLines(printed);
+    int lastPercent = -1;
+    size_t statusLines = 0;
+    for (; statusLines < stdoutLines.size(); ++statusLines) {
+        int percent = -1;
+        char rest = 0;
+        if (2 != std::sscanf(stdoutLines[statusLines].c_str(), "status %d%c", &percent, &rest))
+            break;
+        CHECK('%' == rest);
+        CHECK("status " + std::to_string(percent) + "%" == stdoutLines[statusLines]);
+        CHECK(percent > lastPercent && percent <= 100);
+        lastPercent = percent;
+    }
+    std::printf("stdout: %zu status lines\n", statusLines);
+    CHECK(statusLines >= 3);
+    CHECK(100 == lastPercent);
+    double seconds = -1.0;
+    CHECK(statusLines + 8 == stdoutLines.size());
+    if (statusLines + 8 == stdoutLines.size()) {
+        const std::string* block = &stdoutLines[statusLines];
+        CHECK("=== AutoRemesher Report ===" == block[0]);
+        CHECK("Input: " + input == block[1]);
+        CHECK("Output: " + output == block[2]);
+        CHECK("Quads: " + std::to_string(quadCount) == block[3]);
+        CHECK("Non-quads: " + std::to_string(faceCount - quadCount) == block[4]);
+        CHECK("Vertices: " + std::to_string(vertexCount) == block[5]);
+        CHECK(1 == std::sscanf(block[6].c_str(), "Time: %lf seconds", &seconds));
+        CHECK(seconds > 0.0 && seconds < 300.0);
+        CHECK("===========================" == block[7]);
+    }
+
+    // The report file: the GUI's --report format, with every parameter.
+    const std::vector<std::string> reportLines = readLines(report);
+    CHECK(17 == reportLines.size());
+    if (17 == reportLines.size()) {
+        const std::vector<std::string> expected { "AutoRemesher Report", "===================", "",
+            "Input file: " + input, "Output file: " + output, "Target quads: 300",
+            "Edge scaling: 1.5", "Sharp edge degrees: 60", "Smooth normal degrees: 10",
+            "Adaptivity: 0.5", "Anisotropy: 0.5", "", "Results:",
+            "  Quads: " + std::to_string(quadCount),
+            "  Non-quads: " + std::to_string(faceCount - quadCount),
+            "  Vertices: " + std::to_string(vertexCount) };
+        for (size_t i = 0; i < expected.size(); ++i) {
+            if (expected[i] != reportLines[i]) {
+                std::fprintf(stderr, "report line %zu: expected '%s', got '%s'\n", i + 1,
+                    expected[i].c_str(), reportLines[i].c_str());
+                ++failures;
+            }
+        }
+        double reportSeconds = -1.0;
+        CHECK(1 == std::sscanf(reportLines[16].c_str(), "  Total time: %lf seconds", &reportSeconds));
+        CHECK(reportSeconds == seconds);
+    }
+
+    // Without --report, no report, and the same stdout format.
+    const std::string printedAgain = scratch + "/sphere_stdout_again.txt";
+    std::remove(report.c_str());
+    CHECK(0 == run("-i '" + input + "' -o '" + output + "' --target-quads 300 > '" + printedAgain
+        + "'"));
+    CHECK(!exists(report));
+    const std::vector<std::string> againLines = readLines(printedAgain);
+    CHECK(!againLines.empty() && 0 == againLines.front().compare(0, 7, "status ")
+        && "===========================" == againLines.back());
+
     // Help.
     CHECK(0 == run("--help > /dev/null"));
     CHECK(0 == run("-h > /dev/null"));
@@ -178,7 +258,7 @@ int main(int argc, char** argv)
     CHECK(2 == run("-i '" + input + "' -o '" + unwritten + "' --target-quads 0"));
     CHECK(2 == run("-i '" + input + "' -o '" + unwritten + "' --sharp-edge 200"));
     CHECK(2 == run("-i '" + input + "' -o '" + unwritten + "' --adaptivity abc"));
-    CHECK(2 == run("-i '" + input + "' -o '" + unwritten + "' --report '" + scratch + "/r.txt'"));
+    CHECK(2 == run("-i '" + input + "' -o '" + unwritten + "' --report"));
     CHECK(!exists(unwritten));
 
     // Runtime failures exit 1.
@@ -190,6 +270,19 @@ int main(int argc, char** argv)
     std::ofstream(bad) << "v 0 0 0\nv 1 0 0\nv 1 1 0\nv 0 1 0\nf 1 2 3\nf 1 3 5\n";
     CHECK(1 == run("-i '" + bad + "' -o '" + unwritten + "'"));
     CHECK(!exists(unwritten));
+    // A run that fails writes no report and prints nothing on stdout.
+    const std::string unreported = scratch + "/unreported.txt";
+    const std::string failedStdout = scratch + "/failed_stdout.txt";
+    std::remove(unreported.c_str());
+    CHECK(1 == run("-i '" + bad + "' -o '" + unwritten + "' --report '" + unreported + "' > '"
+        + failedStdout + "'"));
+    CHECK(!exists(unreported));
+    CHECK(readLines(failedStdout).empty());
+    // An unwritable report fails the run, after the mesh is written.
+    std::remove(output.c_str());
+    CHECK(1 == run("-i '" + input + "' -o '" + output + "' --target-quads 300 --report '" + scratch
+        + "/no/such/dir/report.txt' > /dev/null"));
+    CHECK(exists(output));
 
     if (0 != failures) {
         std::fprintf(stderr, "%d check(s) failed\n", failures);

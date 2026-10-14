@@ -59,6 +59,23 @@ Wire the C API's progress callback to print `status NN%` lines to stdout, and
 non-quad count, vertex count, elapsed time) so M3/M4's scripts can parse one
 consistent report format regardless of which tool produced it.
 
+> **M2.3 measured:** `src/cli/report.{h,cpp}` (static library
+> `autoremesher_cli_report`, CTest `test_report`; `test_cli` checks both
+> outputs end to end). Stdout carries `status NN%` lines (bare, no step name;
+> whole percents computed as the GUI does, printed only when the percent
+> rises, at most 99 from the core, then `status 100%` once every file is
+> written, flushed per line), then the GUI's **stdout** block
+> (`=== AutoRemesher Report ===` … `Time: … seconds`), which replaces M2.1's
+> one-line summary. `--report` writes the GUI's report **file** line for
+> line: the same 17 lines, numbers formatted as QTextStream formats them
+> (the file) or as `std::cout` does (the block), as in the GUI. Time is
+> measured as the GUI measures it: whole milliseconds from before the input
+> is read to the end of the remesh, excluding the write. A run that fails
+> writes no report; an unwritable report exits 1 after the OBJ is written.
+> On `source.obj` at 11,054 target quads: 63 status lines over 15.3 s,
+> 7,913 quads, 171 non-quads, 8,060 vertices — M2.2's numbers, and a
+> byte-identical OBJ across runs. See `HANDOFF_M2_TASK3.md`.
+
 ## Exit criteria
 
 - `./autoremesher-cli -i source.obj -o /tmp/out.obj --target-quads 11054`
@@ -80,3 +97,10 @@ consistent report format regardless of which tool produced it.
 > y ∈ [-38.40, 37.24], z ∈ [-39.68, 47.72]. Whether the CLI should instead
 > convert the non-quads to quads is an open question for Giacomo; see
 > `HANDOFF_M2_TASK1.md`.
+
+> **M2.3 (phase end):** the first bullet holds (`ldd` lists no Qt; CTest
+> `autoremesher_cli_no_qt`; the run above had `DISPLAY`, `WAYLAND_DISPLAY`
+> and `QT_QPA_PLATFORM` unset). The second holds **only under M2.1's reading
+> above**: non-empty, every index valid, inside the bounding box, but 2.1 %
+> non-quads. Whether that reading is accepted is still Giacomo's call
+> (M2.1 Open #1), so M2 is not closed until that is answered.

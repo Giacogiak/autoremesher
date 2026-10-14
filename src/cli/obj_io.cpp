@@ -83,6 +83,13 @@ void formatNumber(double value, char (&buffer)[32])
 
 }
 
+std::string formatQtDouble(double value)
+{
+    char buffer[32];
+    formatNumber(value, buffer);
+    return buffer;
+}
+
 bool readObj(const std::string& path, std::vector<double>& vertices,
     std::vector<uint32_t>& triangles, std::string& error)
 {

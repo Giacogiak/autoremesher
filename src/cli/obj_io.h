@@ -44,6 +44,10 @@ bool readObj(const std::string& path, std::vector<double>& vertices,
 // `error` if the file cannot be written.
 bool writeObj(const std::string& path, const autoremesher_core_result& mesh, std::string& error);
 
+// One number as writeObj writes it, which is how QTextStream writes a double
+// by default.  The --report file uses it too, as the GUI's is a QTextStream.
+std::string formatQtDouble(double value);
+
 }
 
 #endif
