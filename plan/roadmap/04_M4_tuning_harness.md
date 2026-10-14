@@ -75,12 +75,20 @@ that motivated it).
 > winner is also first by rms, p95 and max). CV ties are exact unless
 > `--fit-decimals` is given; no tie occurred. Winner:
 > `tq65000_es3.5_se120_sn0_ad1_an1`, combined fit 0.2098 at 12,180 quads
-> (+10.2 %). Exit criterion 1's comparison with the default-parameter baseline
-> is not settled by D5: see the handoff's Open #1.
+> (+10.2 %), 5.6× better than the default parameters at the target's quad
+> count (exit criterion 1, as reworded below).
 
 ## Exit criteria
 
 - A ranked list of trials exists, with the best trial's combined score
-  materially better than M3's documented default-parameter baseline.
+  materially better than the default parameters at the target's quad count:
+  M3's reference record, `plan/baselines/m3_baseline.jsonl` line 3
+  (`--target-quads 2764`, every other parameter at its default).
+
+  > **Reworded in M4.2** (Giacomo Forcina, 2026-10-14). It used to say "M3's
+  > documented default-parameter baseline". That baseline (line 2, 104,000
+  > quads, +841 %) falls outside D5's quad-count gate, so it is not a fair
+  > comparison: on fit alone it beats every trial near the target's count. See
+  > `HANDOFF_M4_TASK2.md`.
 - The winning parameter set is recorded in this phase's handoff for M5 to
   consume directly.

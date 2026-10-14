@@ -3,15 +3,19 @@
 Unit `M4.2`, plan `plan/roadmap/04_M4_tuning_harness.md`, section "Task 2". Branch `wrapper`.
 This is the last unit of M4.
 
-**Status: blocked on one decision (Open #1).** The ranking is done, tested and committed, and the
-winner is recorded below for M5. M4's first exit criterion still cannot be closed.
-"Materially better than M3's default-parameter baseline" has no meaning D5 settles:
+**Status: done. Both M4 exit criteria hold.** The ranking is done, tested and committed, and the
+winner is recorded below for M5.
+
+**Exit criterion 1 was reworded by Giacomo (2026-10-14).** It used to read "materially better than
+M3's documented default-parameter baseline", and D5 gives that no meaning:
 
 - **Under D5's gate,** the baseline is disqualified (+841 % quads).
 - **On fit alone,** the baseline is 3.4× better than the winner.
 
-M4.1 left this to Giacomo (its Open #1), and this unit could not settle it from the data either.
-The options are under Open #1.
+M4.1 raised this (its Open #1), and this unit returned it as a question. Giacomo chose option
+(b) of Open #1: compare with **the default parameters at the target's quad count**, which is M3's
+reference record, `m3_baseline.jsonl` line 3. The winner is 5.6× better than it. The plan's
+bullet now says this, and CTest checks it (see "Tests").
 
 **A person should look at the winning mesh** before M5 uses it. See Open #3.
 
@@ -20,10 +24,10 @@ The options are under Open #1.
 | File | Change |
 |---|---|
 | `scripts/rank_trials.py` (new) | D5's ranking, described below. It reads `tune_params.py`'s file and needs no numpy. |
-| `tests/test_rank_trials.py` (new) | 24 `unittest` tests. 22 use synthetic records; 2 check the committed sweep and ranking. |
+| `tests/test_rank_trials.py` (new) | 25 `unittest` tests. 22 use synthetic records; 3 check the committed sweep, the ranking and exit criterion 1. |
 | `CMakeLists.txt` | Adds CTest `test_rank_trials` in the existing Python block. |
 | `tuning_runs/ranking.json` (new) | The whole ranking of the committed sweep at ±15 %, about 43 KB. It holds all 54 ranked trials, the 36 excluded ones with a reason, and both M3 records for comparison. |
-| `plan/roadmap/04_M4_tuning_harness.md` | A "Done in M4.2" note under Task 2. No criterion changed. |
+| `plan/roadmap/04_M4_tuning_harness.md` | A "Done in M4.2" note under Task 2. **Exit criterion 1 is reworded** as Giacomo decided: "the default parameters at the target's quad count" (`m3_baseline.jsonl` line 3), not the default-parameter baseline. A note under the bullet says why. |
 
 ### `scripts/rank_trials.py`
 
@@ -72,7 +76,7 @@ scripts/rank_trials.py --band 15 --top 15 \
 
 ### Tests
 
-The tests are in `tests/test_rank_trials.py`, 24 in all.
+The tests are in `tests/test_rank_trials.py`, 25 in all.
 
 - **Metrics:** the combined fit is the mean of both directions. The CV distance is measured from
   the target's CV on both sides.
@@ -96,11 +100,18 @@ The tests are in `tests/test_rank_trials.py`, 24 in all.
   - with no survivors: exit 3, empty stdout and no JSON written;
   - a missing file gives exit 1;
   - 6 usage errors give exit 2.
-- **Committed** (skipped where the files are missing; **in CTest both ran**, `ctest -V`):
+- **Committed** (skipped where the files are missing; **in CTest all three ran**, `ctest -V`):
   - `test_ranking_json_is_up_to_date` reruns the script with the band and baselines recorded in
     `tuning_runs/ranking.json`, and requires the result to be identical to the committed file.
     A stale ranking, or a change to the ranking rules, fails it.
   - `test_winner` pins the winner at ±15 %.
+  - `test_winner_beats_the_defaults_at_the_targets_quad_count` checks exit criterion 1 as
+    reworded. It was added after Giacomo's answer.
+    - The reference, `m3_baseline.jsonl:3`, must pass the gate and have 11,526 quads.
+    - The winner's combined fit must be under half of the reference's.
+    - Its `fit.mean` and `fit_reverse.mean` must each be lower than the reference's.
+    - **I checked that this test can fail.** In a temporary copy of the test with the threshold
+      set to a tenth instead of a half, it failed, because 5.6× is not 10×.
 - **Red first.** Before the script existed, the file failed on import
   (`ModuleNotFoundError: rank_trials`).
 - **Mutations.** I applied 6, one at a time, and **all 6 were caught**:
@@ -258,20 +269,29 @@ How the comparison above was made:
 
 ## M4 exit criteria (phase-wide)
 
-- [ ] **A ranked list of trials exists, with the best trial's combined score materially better
-  than M3's documented default-parameter baseline.**
-  - **The first half holds.** The ranked list is `tuning_runs/ranking.json`: 54 trials at
-    ±15 %. CTest `test_rank_trials` checks it against the sweep on every run.
-  - **The second half has no answer under D5, so this criterion is not closed (Open #1).**
-    - Under D5's gate, the baseline is disqualified (+840.8 % quads), so it has no rank to
-      beat.
-    - On combined fit alone, the baseline (0.0613) beats the winner (0.2098) by 3.42×.
-    - The best result inside the gate cannot plausibly reach 0.0613: the best of 63 trials
-      within ±20 % is 0.208.
+- [x] **A ranked list of trials exists, with the best trial's combined score materially better
+  than the default parameters at the target's quad count.** This is the bullet as Giacomo
+  reworded it. It used to say "M3's documented default-parameter baseline"; see Open #1.
+  - **The ranked list** is `tuning_runs/ranking.json`: 54 trials at ±15 %. CTest
+    `test_rank_trials` checks it against the sweep on every run.
+  - **The winner is 5.6× better than the defaults at the target's count.**
+    - The reference is M3's `m3_baseline.jsonl` line 3: `--target-quads 2764`, every other
+      parameter at its default. It has 11,526 quads (+4.3 %), passes the ±15 % gate, and ranks
+      48th of 54.
+    - Combined fit: 0.20975 against 1.17657, a ratio of 0.178.
+    - `fit.mean`: 0.17149 against 0.57295, 3.3× better.
+    - `fit_reverse.mean`: 0.24801 against 1.78018, 7.2× better.
+    - The winner is at a similar count: +10.2 % against +4.3 %.
+    - Every trial was scored on every vertex (`--samples 0`) against `quad-remeshed.obj`, by
+      `score_remesh.py` `scorer_version` 1.
+    - CTest's `test_winner_beats_the_defaults_at_the_targets_quad_count` checks this on every
+      run.
+  - **For the record, against the raw default-parameter baseline** (line 2): D5's gate
+    disqualifies it (+840.8 % quads), and on combined fit alone it beats the winner by 3.42×
+    (0.0613 against 0.2098). This is why the bullet was reworded.
 - [x] **The winning parameter set is recorded in this phase's handoff for M5 to consume
   directly.** See "The winning parameter set" above: the flags, the values next to the
   defaults, the output's sha256 and every score field.
-  - This holds under any answer to Open #1, because none of them changes the ranking.
   - Open #3 (a person looking at the mesh) is the one caveat.
 
 ### The CI command
@@ -283,6 +303,14 @@ before the first commit:
 - **13/13** tests pass: `test_rank_trials` 0.34 s, `test_tune_params` 9.81 s,
   `test_score_remesh` 6.15 s and `test_core` 37.88 s.
 - In `ctest -V`, both `Committed` tests in `test_rank_trials` ran; neither was skipped.
+
+**It was run again after Giacomo's answer,** on the working tree with the new exit-criterion test
+and the reworded plan, before the final commit:
+
+- Exit **0**, 55 s wall.
+- **13/13** tests pass: `test_rank_trials` 0.34 s with 25 tests, `test_tune_params` 9.75 s,
+  `test_score_remesh` 5.98 s and `test_core` 37.18 s.
+- In `ctest -V`, all three `Committed` tests ran.
 
 ## What I got wrong on the way
 
@@ -297,34 +325,16 @@ before the first commit:
 
 ## Open
 
-1. **Exit criterion 1 needs Giacomo's reading of "materially better than the baseline".**
-   M4.1 raised this as its Open #1, and this unit's measurements do not settle it. The options:
-
-   - **(a) Gated: the baseline is disqualified, so any survivor beats it.**
-     - The criterion closes now.
-     - It shows only that the gate works, not that tuning helped.
-   - **(b) Against M3's matched-count reference** (`m3_baseline.jsonl:3`, `--target-quads 2764`
-     with every other parameter at its default).
-     - The winner is **5.6× better**: 0.2098 against 1.1766, at a similar count (+10.2 %
-       against +4.3 %).
-     - It is also better on each direction separately: `fit` 3.3× and `fit_reverse` 7.2×.
-     - The criterion closes now.
-     - The plan text would change from "default-parameter baseline" to "the default parameters
-       at the target's quad count". I recommend this reading. It is what D5's reasoning
-       implies, and it measures what the tuning actually changed.
-   - **(c) Fit normalised by mesh resolution.** This depends on how fit is assumed to scale with
-     edge length h.
-     - Dividing by h, the baseline still wins: 0.0946 against 0.1118.
-     - Dividing by h², the error order of a piecewise-linear surface, the winner is 2.4× better:
-       0.0596 against 0.1459.
-     - The exponent is an assumption, so this reading would need its own decision.
-   - **(d) Literal: compare fit numbers directly.**
-     - The criterion fails, by 3.42×, and no in-band trial can be expected to pass it.
-     - M4 would then need a different target or a new decision. D5 itself says density is what
-       makes the baseline's fit good.
-
-   Whichever is chosen, the plan's `## Exit criteria` bullet should be reworded to match. The
-   ranking and the winner do not change under any of the options.
+1. **Resolved: exit criterion 1's reading.** Giacomo chose option (b) on 2026-10-14. The
+   comparison is with the default parameters at the target's quad count (`m3_baseline.jsonl`
+   line 3), not with the raw default-parameter baseline, which falls outside D5's gate.
+   - The plan's bullet is reworded to match, and the criterion is closed above.
+   - The options that were offered, kept for the record:
+     - (a) gated: the baseline is disqualified, so any survivor beats it;
+     - (b) the matched-count reference: 5.6× better;
+     - (c) fit normalised by mean edge length h: the baseline wins dividing by h (0.0946
+       against 0.1118), and the winner wins dividing by h², 2.4× (0.0596 against 0.1459);
+     - (d) the literal fit comparison: fails by 3.42×.
 2. **The band upper edge matters only above +17.6 %.** At ±20 %, the 95,000/es 3.5/se 60 trial
    would win by 0.7 % fit at +17.6 % quads. If Giacomo prefers ±20 %, rerun with `--band 20`;
    `test_ranking_json_is_up_to_date` then needs the regenerated `ranking.json` committed, since it
@@ -367,5 +377,5 @@ before the first commit:
   test timeout.
 - **To re-rank** after more trials, run `scripts/rank_trials.py` with the command above. Commit
   the new `ranking.json`, or `test_rank_trials` fails.
-- **Open #1 must be answered** before M4 can be called complete. M5 does not depend on the
-  answer.
+- **M4 is complete.** Both exit criteria hold, with exit criterion 1 as reworded. The one
+  caveat is Open #3: no person has looked at the winning mesh yet.

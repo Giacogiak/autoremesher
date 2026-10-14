@@ -316,6 +316,21 @@ class Committed(unittest.TestCase):
         ranked, _ = R.rank(records, band_pct=15.0)
         self.assertEqual(ranked[0]['trial'], 'tq65000_es3.5_se120_sn0_ad1_an1')
 
+    @unittest.skipUnless(os.path.exists(BASELINE), 'needs plan/baselines/m3_baseline.jsonl')
+    def test_winner_beats_the_defaults_at_the_targets_quad_count(self):
+        # M4's exit criterion 1, as Giacomo read it for M4.2: the winner's combined
+        # fit must be materially (here: at least 2x) better than M3's reference, the
+        # CLI's defaults at the target's quad count (--target-quads 2764, line 3)
+        with open(SWEEP) as f:
+            records = [json.loads(line) for line in f if line.strip()]
+        ranked, _ = R.rank(records, band_pct=15.0)
+        ref = R.baseline_entry(R.load_baseline(BASELINE + ':3'), 15.0)
+        self.assertEqual(ref['gate'], None)
+        self.assertEqual(ref['quads'], 11526)
+        self.assertLess(ranked[0]['combined_fit'], ref['combined_fit'] / 2)
+        self.assertLess(ranked[0]['fit_mean'], ref['fit_mean'])
+        self.assertLess(ranked[0]['fit_reverse_mean'], ref['fit_reverse_mean'])
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
