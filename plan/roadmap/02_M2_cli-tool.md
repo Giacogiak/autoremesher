@@ -74,7 +74,8 @@ consistent report format regardless of which tool produced it.
 > writes no report; an unwritable report exits 1 after the OBJ is written.
 > On `source.obj` at 11,054 target quads: 58 status lines over 15.3 s.
 >
-> **M2.3, after D6** (Giacomo chose to split every face into quads; see
+> **M2.3, after D6** (*reverted by Task 4: the split is now opt-in,
+> `--split-to-quads`*; Giacomo chose to split every face into quads; see
 > `plan/01_decisions.md`): the CLI now always calls the new
 > `autoremesher_core_split_into_quads()` after the remesh, so the OBJ and
 > both reports describe the **split** mesh. At 11,054 target quads the core
@@ -105,6 +106,22 @@ triangles/pentagons), reported via the existing non-quad-count line — no new
 reporting code should be needed. Update the CLI's help text and this file's
 Exit criteria (below) to match.
 
+> **M2.4 measured:** the split is now **opt-in**, behind a new switch
+> `--split-to-quads` (no value; `--split-to-quads=…` is a usage error, exit
+> 2). Without it, `autoremesher-cli` writes the core's own mesh, as in M2.1–
+> M2.3 part 1. With it, the output is byte-identical to M2.3's after-D6
+> output, and the stderr `remeshed to …` line is printed only then. Kept
+> as a flag rather than unexposed: it costs one `if`, and it keeps the
+> library's split callable and tested end to end (`test_cli`) for M5's
+> parity check and for anyone who needs all-quad output. The help text
+> describes the default output and the flag. On `source.obj` at 11,054
+> target quads: 8,084 faces (7,913 quads, 165 pentagons, 6 triangles; 97.9 %
+> quads), 8,060 vertices, 15.1 s, the same bytes on a second run; with
+> `--split-to-quads`, 32,495 quads as before. `test_tune_params`' real-CLI
+> check, which reproduces M3.2's split-output baseline, now runs the CLI
+> through a wrapper that adds `--split-to-quads`, until M3.3 re-records
+> that baseline. See `HANDOFF_M2_TASK4.md`.
+
 ## Exit criteria
 
 - `./autoremesher-cli -i source.obj -o /tmp/out.obj --target-quads 11054`
@@ -131,9 +148,11 @@ Exit criteria (below) to match.
 > The bounding-box part holds: the output spans x ∈ [-65.98, 117.89],
 > y ∈ [-38.40, 37.24], z ∈ [-39.68, 47.72]. Whether the CLI should instead
 > convert the non-quads to quads is an open question for Giacomo; see
-> `HANDOFF_M2_TASK1.md`.
+> `HANDOFF_M2_TASK1.md`. (Settled: D6, then D6's reversal — the
+> default output keeps them; `--split-to-quads` converts them on request.)
 
-> **M2.3 (phase end):** both bullets hold **as originally written**; M2.1's
+> **M2.3 (phase end)** — *superseded by M2.4 below; it describes the split
+> output, now opt-in:* both bullets hold **as originally written**; M2.1's
 > "mostly quads" reading above is superseded by D6. The first: `ldd` lists
 > no Qt, CTest `autoremesher_cli_no_qt` passes, and the run had `DISPLAY`,
 > `WAYLAND_DISPLAY` and `QT_QPA_PLATFORM` unset. The second: at
@@ -141,3 +160,14 @@ Exit criteria (below) to match.
 > index valid, spanning x ∈ [-65.9775, 117.889], y ∈ [-38.4004, 37.2365],
 > z ∈ [-39.6777, 47.7157] — inside `source.obj`'s box (the split only adds
 > means of existing vertices, so it cannot leave the box).
+
+> **M2.4 (phase end):** both bullets hold as worded above. The first:
+> `ldd build/autoremesher-cli` lists no Qt (`grep -ic qt` gives 0), CTest
+> `autoremesher_cli_no_qt` passes, and the 11,054-quad run completed (exit
+> 0) with `DISPLAY`, `WAYLAND_DISPLAY` and `QT_QPA_PLATFORM` unset. The
+> second: that run wrote 8,084 faces (7,913 quads = 97.9 %, 165 pentagons,
+> 6 triangles) and 8,060 vertices, 0 out-of-range indices, 0 faces with a
+> repeated index, spanning x ∈ [-65.9775, 117.889], y ∈ [-38.4004,
+> 37.2365], z ∈ [-39.6777, 47.7157] — inside `source.obj`'s box. `test_cli`
+> checks the default output (mostly quads, every index valid, every vertex
+> on its sphere) and the `--split-to-quads` output on every CI run.

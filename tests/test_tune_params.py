@@ -362,12 +362,20 @@ class Sweep(unittest.TestCase):
 class RealCli(unittest.TestCase):
     def test_reproduces_m3s_reference_trial(self):
         # M3.2 recorded --target-quads 2764 with the other defaults as line 3 of
-        # the baseline file; the harness must give the same score to every digit
+        # the baseline file; the harness must give the same score to every digit.
+        # That run's CLI split every face into quads (D6); since D6's reversal
+        # (M2.4) it takes --split-to-quads to do so, so the CLI is wrapped to
+        # add it until M3.3 re-records the baseline on unsplit output
         with tempfile.TemporaryDirectory() as d:
+            cli = os.path.join(d, 'split-cli')
+            with open(cli, 'w') as f:
+                f.write('#!/bin/sh\nexec "$0.real" "$@" --split-to-quads\n')
+            os.symlink(os.path.abspath(REAL_CLI), cli + '.real')
+            os.chmod(cli, 0o755)
             out = os.path.join(d, 'sweep.jsonl')
             err = io.StringIO()
             with redirect_stderr(err):
-                code = T.main(['grid', '--cli', REAL_CLI, '--source', SOURCE_OBJ,
+                code = T.main(['grid', '--cli', cli, '--source', SOURCE_OBJ,
                                '--target', TARGET_OBJ, '--out', out,
                                '--work', os.path.join(d, 'trials'),
                                '--vary', 'target-quads=2764', '--center', 'adaptivity=1'])

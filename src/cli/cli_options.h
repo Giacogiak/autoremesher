@@ -21,6 +21,7 @@ struct Options {
     double smoothNormalDegrees = 0.0;
     double adaptivity = 1.0;
     double anisotropy = 1.0;
+    bool splitToQuads = false; // --split-to-quads: split every face into quads
     bool help = false;
 };
 
@@ -35,7 +36,8 @@ const std::size_t minTargetQuads = 1, maxTargetQuads = 2147483647;
 
 // Parses argv[1..argc-1] into `options`, which starts from the defaults
 // above.  Accepts "--name value" and "--name=value", and "-i value" /
-// "-o value" for the two short forms; when a flag is repeated the last value
+// "-o value" for the two short forms, and the switch --split-to-quads, which
+// takes no value; when a flag is repeated the last value
 // wins, as with QCommandLineParser.  Returns false and sets `error` on an
 // unknown flag, a missing or malformed value, a value out of range, a
 // positional argument, or a missing --input or --output.  With -h/--help it

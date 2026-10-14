@@ -61,6 +61,7 @@ int main()
     CHECK(0.0 == options.smoothNormalDegrees);
     CHECK(1.0 == options.adaptivity);
     CHECK(1.0 == options.anisotropy);
+    CHECK(!options.splitToQuads);
     CHECK(!options.help);
 
     // Every flag, "--name value" form.
@@ -100,6 +101,17 @@ int main()
     CHECK("c" == options.inputPath);
     CHECK("-out.obj" == options.outputPath);
     CHECK(20 == options.targetQuads);
+
+    // --split-to-quads is a switch: it takes no value, and repeating it is harmless.
+    CHECK(parse({ "-i", "in.obj", "--split-to-quads", "-o", "out.obj" }, options, error));
+    CHECK(options.splitToQuads);
+    CHECK("out.obj" == options.outputPath);
+    CHECK(parse({ "--split-to-quads", "-i", "in.obj", "-o", "out.obj", "--split-to-quads" },
+        options, error));
+    CHECK(options.splitToQuads);
+    CHECK(refused({ "-i", "in.obj", "-o", "out.obj", "--split-to-quads=yes" }));
+    CHECK(refused({ "-i", "in.obj", "-o", "out.obj", "--split-to-quads=" }));
+    CHECK(refused({ "-i", "in.obj", "-o", "out.obj", "--split-to-quads", "yes" }));
 
     // Help needs nothing else, and wins over errors after it.
     CHECK(parse({ "--help" }, options, error));

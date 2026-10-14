@@ -74,6 +74,14 @@ bool parse(int argc, const char* const* argv, Options& options, std::string& err
                 hasValue = true;
             }
         }
+        if ("--split-to-quads" == name) {
+            if (hasValue) {
+                error = name + " takes no value";
+                return false;
+            }
+            options.splitToQuads = true;
+            continue;
+        }
         const bool isFlag = "-i" == name || "-o" == name || "--input" == name
             || "--output" == name || "--report" == name || "--target-quads" == name
             || "--edge-scaling" == name || "--sharp-edge" == name || "--smooth-normal" == name
@@ -150,8 +158,8 @@ std::string usage(const char* programName)
            << "\n"
            << "AutoRemesher - Automatic quad remeshing tool, without the GUI.\n"
            << "The input is welded (vertices at the same position merged) before remeshing.\n"
-           << "Every remeshed face is then split into quads (an n-gon into n quads), so the\n"
-           << "output is all quads, with about 4 times as many faces as --target-quads asks.\n"
+           << "The output is the remesher's own polygon mesh: mostly quads, with a few\n"
+           << "triangles and 5- to 7-gons, counted as non-quads in the summary.\n"
            << "Progress is printed on stdout as 'status NN%' lines, then a summary.\n"
            << "\n"
            << "Options:\n"
@@ -159,8 +167,7 @@ std::string usage(const char* programName)
            << "  -o, --output <output.obj>  Output .obj file for the remeshed result (required)\n"
            << "  --report <report.txt>      Report file with the paths, the parameters and stats\n"
            << "                             (quads, non-quads, vertices, time); none if omitted\n"
-           << "  --target-quads <count>     Target quad count of the remesh, before the split\n"
-           << "                             (default: 50000)\n"
+           << "  --target-quads <count>     Target quad count (default: 50000)\n"
            << "  --edge-scaling <factor>    Edge scaling factor (default: 1.0, range: 1.0-4.0)\n"
            << "  --sharp-edge <degrees>     Sharp edge dihedral angle threshold in degrees\n"
            << "                             (default: 90.0, range: 30.0-180.0)\n"
@@ -170,6 +177,9 @@ std::string usage(const char* programName)
            << "                             (default: 1.0, range: 0.0-1.0)\n"
            << "  --anisotropy <value>       Curvature-adaptive quad elongation\n"
            << "                             (default: 1.0, range: 0.0-1.0)\n"
+           << "  --split-to-quads           Split every remeshed face into quads (an n-gon into\n"
+           << "                             n quads, quads included), so the output is all quads,\n"
+           << "                             with about 4 times as many faces; off by default\n"
            << "  -h, --help                 Show this help\n"
            << "\n"
            << "Values may also be given as --name=value.\n"
