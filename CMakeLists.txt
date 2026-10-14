@@ -117,3 +117,17 @@ set_tests_properties(test_core_api PROPERTIES TIMEOUT 300)
 add_executable(test_weld tests/test_weld.c)
 target_link_libraries(test_weld PRIVATE autoremesher_core)
 add_test(NAME test_weld COMMAND test_weld)
+
+# M1's smoke test: weld and remesh the real input, source.obj, at the GUI's
+# defaults. source.obj is not in git (*.obj is ignored), so the test is
+# skipped, not failed, where the file is missing.
+set(AUTOREMESHER_SOURCE_OBJ "${CMAKE_CURRENT_SOURCE_DIR}/source.obj" CACHE FILEPATH
+  "Mesh for the test_core smoke test")
+if (NOT EXISTS "${AUTOREMESHER_SOURCE_OBJ}")
+  message(WARNING "${AUTOREMESHER_SOURCE_OBJ} not found; test_core will be skipped")
+endif()
+add_executable(test_core tests/test_core.cpp)
+target_link_libraries(test_core PRIVATE autoremesher_core)
+add_test(NAME test_core COMMAND test_core ${AUTOREMESHER_SOURCE_OBJ})
+# One remesh of source.obj takes about 37 s in Release.
+set_tests_properties(test_core PROPERTIES TIMEOUT 600 SKIP_RETURN_CODE 77)

@@ -124,6 +124,15 @@ real OBJ I/O is M2's job), welds, and calls `remesh()` with defaults, asserting
 > left unset) on welded `source.obj` it gave 25,988 quads in 37 s (Release,
 > 8-thread toolbox).
 
+> **M1.4 measured:** `tests/test_core.cpp` (CTest `test_core`) loads
+> `source.obj` with a minimal inline loader, asserts 97,400 vertices /
+> 175,566 triangles raw and **87,691** vertices after
+> `autoremesher_core_weld()`, then remeshes at 50,000 target quads, scaling
+> 1.0: 25,988 faces, **25,932 quads**, 36.9 s. `source.obj` is **not in git**
+> (`.gitignore` has `*.obj`), so the test reads it from
+> `AUTOREMESHER_SOURCE_OBJ` (default `<repo>/source.obj`) and is reported as
+> *skipped* (exit 77) where the file is missing. See `HANDOFF_M1_TASK4.md`.
+
 ## Exit criteria
 
 - `cmake --build` produces `libautoremesher_core.so` with zero Qt symbols
