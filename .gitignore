@@ -49,3 +49,5 @@ qrc_*.cpp
 moc/
 
 .plan-run/
+# Python bytecode (tests/test_score_remesh.py imports scripts/score_remesh.py)
+__pycache__/
