@@ -218,6 +218,11 @@ if (Python3_Interpreter_FOUND)
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_tune_params.py)
   set_tests_properties(test_tune_params PROPERTIES TIMEOUT 300
     ENVIRONMENT "AUTOREMESHER_CLI=$<TARGET_FILE:autoremesher-cli>;AUTOREMESHER_SOURCE_OBJ=${AUTOREMESHER_SOURCE_OBJ};AUTOREMESHER_TARGET_OBJ=${CMAKE_CURRENT_SOURCE_DIR}/quad-remeshed.obj")
+  # M4's D5 ranking, scripts/rank_trials.py, on synthetic records, and a check that
+  # the committed tuning_runs/ranking.json is what it makes of the committed sweep
+  add_test(NAME test_rank_trials
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_rank_trials.py)
+  set_tests_properties(test_rank_trials PROPERTIES TIMEOUT 300)
 else()
-  message(WARNING "No Python 3 interpreter found; test_score_remesh and test_tune_params will not run")
+  message(WARNING "No Python 3 interpreter found; test_score_remesh, test_tune_params and test_rank_trials will not run")
 endif()
