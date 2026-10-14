@@ -67,6 +67,17 @@ fit-ranking just picks the densest mesh in the sweep — this is exactly what
 D5 exists to prevent; see `HANDOFF_M3_TASK2.md` Open #1 for the measurement
 that motivated it).
 
+> **Done in M4.2** (`HANDOFF_M4_TASK2.md`): `scripts/rank_trials.py`, tested by
+> CTest `test_rank_trials`; the whole ranking is committed as
+> `tuning_runs/ranking.json`. Band **±15 %** (54 of the 90 trials survive; the
+> winner is the same for any band from ±10.2 % to ±17.5 %). Statistic: the
+> **mean of `fit.mean` and `fit_reverse.mean`** (the same order as D5's sum; the
+> winner is also first by rms, p95 and max). CV ties are exact unless
+> `--fit-decimals` is given; no tie occurred. Winner:
+> `tq65000_es3.5_se120_sn0_ad1_an1`, combined fit 0.2098 at 12,180 quads
+> (+10.2 %). Exit criterion 1's comparison with the default-parameter baseline
+> is not settled by D5: see the handoff's Open #1.
+
 ## Exit criteria
 
 - A ranked list of trials exists, with the best trial's combined score
