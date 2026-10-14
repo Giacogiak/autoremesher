@@ -30,6 +30,19 @@ defaults to find each parameter's individual effect, then a smaller combined
 grid or random search over the most sensitive 2–3 parameters. Record which
 approach was used and why in this phase's handoff.
 
+> **Done in M4.1** (`HANDOFF_M4_TASK1.md`): `scripts/tune_params.py
+> {oat,grid,random,list}`, tested by CTest `test_tune_params`. It ran 90
+> trials into `tuning_runs/sweep_results.jsonl`: one-at-a-time around the
+> centre above, then a combined grid over edge-scaling × target-quads ×
+> sharp-edge. All 90 came back ok, and none has degenerate quads.
+> **The ≈2,760 centre holds only at `--edge-scaling 1`.** Edge-scaling coarsens
+> the quads, so a larger target-quads has to make up for it. At a matched
+> quad count, a higher edge-scaling fits much better: combined fit ≈ 1.18 at
+> es 1, ≈ 0.21 at es 3–3.5, with target-quads 50,000–95,000. A one-at-a-time
+> sweep at fixed target-quads hides this, because there edge-scaling only
+> looks like it removes quads. The plan's sharp-edge set {60…150} is not the
+> CLI's full range (30–180); 30 and 45 were swept too.
+
 ## Task 2 — ranking
 
 A ranking step (`scripts/rank_trials.py`, or inline in the sweep script) that
