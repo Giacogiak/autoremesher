@@ -17,9 +17,9 @@ against the Rhino target (M4, plan/roadmap/04_M4_tuning_harness.md)
   list    one line per recorded trial
 
 Common options: --cli, --source, --target, --out (default
-tuning_runs/sweep_results.jsonl), --work (tuning_runs/trials), --timeout
-seconds per CLI run (default 600), --center NAME=VALUE (the centre is the CLI's
-defaults with target-quads 2764), --samples and --seed-score (passed to the
+tuning_runs/unsplit/sweep_results.jsonl), --work (tuning_runs/unsplit/trials),
+--timeout seconds per CLI run (default 600), --center NAME=VALUE (the centre is
+the CLI's defaults with target-quads 11054), --samples and --seed-score (passed to the
 scorer), --label (stored in each record), --rerun, --dry-run.
 
 NAME is a CLI flag without its dashes, e.g. edge-scaling (or edge_scaling).
@@ -69,14 +69,15 @@ PARAMS = (
 BY_NAME = {p.name: p for p in PARAMS}
 CLI_DEFAULTS = {p.name: p.default for p in PARAMS}
 
-# The CLI splits every face into quads (D6), giving about 4x --target-quads, so
-# the target's 11,054 quads are near --target-quads 11054 / 4
-CENTER = dict(CLI_DEFAULTS, target_quads=2764)
+# The CLI writes the core's own polygon mesh (D6 reversed, M2.4), so the centre
+# is the target's own 11,054 quads. M4.1/M4.2 swept the split output, which has
+# about 4x --target-quads quads, around 2764
+CENTER = dict(CLI_DEFAULTS, target_quads=11054)
 
-# The plan's values: target-quads re-centred as above, the others each
+# The plan's values: target-quads around the target's count, the others each
 # parameter's documented range
 DEFAULT_SWEEP = {
-    'target_quads': [2000, 2400, 2764, 3100, 3500],
+    'target_quads': [8000, 9500, 11054, 12500, 14000],
     'edge_scaling': [1.0, 1.5, 2.0, 2.5],
     'sharp_edge': [60.0, 90.0, 120.0, 150.0],
     'smooth_normal': [0.0, 30.0, 60.0],
@@ -309,7 +310,8 @@ def non_negative(text):
 
 def build_parser():
     common = argparse.ArgumentParser(add_help=False)
-    common.add_argument('--out', default=os.path.join('tuning_runs', 'sweep_results.jsonl'),
+    common.add_argument('--out', default=os.path.join('tuning_runs', 'unsplit',
+                                                      'sweep_results.jsonl'),
                         help='JSON-lines file each trial is appended to (default %(default)s)')
 
     sweep = argparse.ArgumentParser(add_help=False, parents=[common])
@@ -319,7 +321,7 @@ def build_parser():
                        help='mesh to remesh (default %(default)s)')
     sweep.add_argument('--target', default='quad-remeshed.obj',
                        help='mesh to score against (default %(default)s)')
-    sweep.add_argument('--work', default=os.path.join('tuning_runs', 'trials'),
+    sweep.add_argument('--work', default=os.path.join('tuning_runs', 'unsplit', 'trials'),
                        help='directory of the trials\' meshes and logs (default %(default)s)')
     sweep.add_argument('--timeout', type=positive, default=600.0,
                        help='seconds before a CLI run is killed (default %(default)g)')
@@ -327,7 +329,7 @@ def build_parser():
                        help='values of one parameter to sweep; repeatable')
     sweep.add_argument('--center', action='append', default=[], metavar='NAME=VALUE',
                        help='value of a parameter when it is not swept; repeatable '
-                            '(default: the CLI\'s defaults, with target-quads 2764)')
+                            '(default: the CLI\'s defaults, with target-quads 11054)')
     sweep.add_argument('--samples', type=non_negative, default=0,
                        help='scorer: vertices sampled per distance (default 0: all)')
     sweep.add_argument('--seed-score', type=int, default=0,

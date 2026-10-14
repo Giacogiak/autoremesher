@@ -84,16 +84,24 @@ class Plan(unittest.TestCase):
         self.assertEqual(T.CLI_DEFAULTS, {
             'target_quads': 50000, 'edge_scaling': 1.0, 'sharp_edge': 90.0,
             'smooth_normal': 0.0, 'adaptivity': 1.0, 'anisotropy': 1.0})
-        # The centre is the CLI's defaults with target-quads re-centred (M2.3's D6
-        # warning in the M4 plan): about 11,054 / 4
-        self.assertEqual(T.CENTER, dict(T.CLI_DEFAULTS, target_quads=2764))
+        # The centre is the CLI's defaults with target-quads on the target's own
+        # 11,054 quads: the CLI no longer splits its output (D6 reversed, M4.3)
+        self.assertEqual(T.CENTER, dict(T.CLI_DEFAULTS, target_quads=11054))
         self.assertEqual(T.DEFAULT_SWEEP, {
-            'target_quads': [2000, 2400, 2764, 3100, 3500],
+            'target_quads': [8000, 9500, 11054, 12500, 14000],
             'edge_scaling': [1.0, 1.5, 2.0, 2.5],
             'sharp_edge': [60.0, 90.0, 120.0, 150.0],
             'smooth_normal': [0.0, 30.0, 60.0],
             'adaptivity': [0.0, 0.5, 1.0],
             'anisotropy': [0.0, 0.5, 1.0]})
+
+    def test_default_files_are_the_unsplit_sweeps(self):
+        # M4.1's sweep (tuning_runs/sweep_results.jsonl) ran on the split output
+        # and is kept for the record; new trials go to the unsplit sweep's files
+        args = T.build_parser().parse_args(['oat'])
+        self.assertEqual(args.out, os.path.join('tuning_runs', 'unsplit', 'sweep_results.jsonl'))
+        self.assertEqual(args.work, os.path.join('tuning_runs', 'unsplit', 'trials'))
+        self.assertEqual(T.build_parser().parse_args(['list']).out, args.out)
 
     def test_one_at_a_time(self):
         trials = T.oat_trials(T.DEFAULT_SWEEP, T.CENTER)
@@ -106,7 +114,7 @@ class Plan(unittest.TestCase):
             changed = [k for k in p if p[k] != T.CENTER[k]]
             self.assertEqual(len(changed), 1, p)
             self.assertIn(p[changed[0]], T.DEFAULT_SWEEP[changed[0]])
-        self.assertEqual(trials[1], dict(T.CENTER, target_quads=2000))
+        self.assertEqual(trials[1], dict(T.CENTER, target_quads=8000))
 
     def test_one_at_a_time_value_off_the_centre(self):
         trials = T.oat_trials({'adaptivity': [0.0, 0.5]}, T.CENTER)
@@ -150,16 +158,16 @@ class Plan(unittest.TestCase):
             T.parse_center('sharp-edge=120,150')
 
     def test_trial_id(self):
-        self.assertEqual(T.trial_id(T.CENTER), 'tq2764_es1_se90_sn0_ad1_an1')
+        self.assertEqual(T.trial_id(T.CENTER), 'tq11054_es1_se90_sn0_ad1_an1')
         self.assertEqual(T.trial_id(dict(T.CENTER, edge_scaling=1.5, adaptivity=0.25)),
-                         'tq2764_es1.5_se90_sn0_ad0.25_an1')
+                         'tq11054_es1.5_se90_sn0_ad0.25_an1')
 
     def test_cli_argv(self):
         argv = T.cli_argv('cli', 'in.obj', 'out.obj', 'r.txt',
                           dict(T.CENTER, edge_scaling=1.5))
         self.assertEqual(argv, [
             'cli', '-i', 'in.obj', '-o', 'out.obj', '--report', 'r.txt',
-            '--target-quads', '2764', '--edge-scaling', '1.5', '--sharp-edge', '90.0',
+            '--target-quads', '11054', '--edge-scaling', '1.5', '--sharp-edge', '90.0',
             '--smooth-normal', '0.0', '--adaptivity', '1.0', '--anisotropy', '1.0'])
 
 
@@ -321,7 +329,7 @@ class Sweep(unittest.TestCase):
         code, out, err = self.run_main('oat', '--dry-run')
         self.assertEqual(code, 0, err)
         self.assertEqual(len(out.strip().split('\n')), 17)
-        self.assertIn('tq2764_es1_se90_sn0_ad1_an1', out)
+        self.assertIn('tq11054_es1_se90_sn0_ad1_an1', out)
         self.assertEqual(self.cli_calls(), [])
         self.assertFalse(os.path.exists(self.out))
 

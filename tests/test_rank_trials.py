@@ -89,6 +89,56 @@ class Metrics(unittest.TestCase):
         self.assertAlmostEqual(R.cv_distance(score(11054, 1, 1, 0.60)), 0.60 - TARGET_CV)
 
 
+def spread_rec(trial, quads, fit, fit_rev, fit_p95, fit_max, rev_p95, rev_max, non_quads=0):
+    """rec() with distinct p95 and max for both distances, and some non-quads"""
+    r = rec(trial, quads, fit, fit_rev)
+    s = r['score']
+    s['fit']['p95'], s['fit']['max'] = fit_p95, fit_max
+    s['fit_reverse']['p95'], s['fit_reverse']['max'] = rev_p95, rev_max
+    s['non_quad_faces']['candidate'] = non_quads
+    return r
+
+
+class Spread(unittest.TestCase):
+    # M4.3: each survivor's p95 and max fit are reported next to its mean, so a
+    # reviewer sees the spread before opening a viewer; they do not rank
+    def test_entry_reports_p95_max_and_non_quads(self):
+        e = R.entry(spread_rec('a', 11054, 0.1, 0.2, 0.7, 3.1, 0.9, 4.0, non_quads=12))
+        self.assertEqual((e['fit_mean'], e['fit_p95'], e['fit_max']), (0.1, 0.7, 3.1))
+        self.assertEqual((e['fit_reverse_mean'], e['fit_reverse_p95'], e['fit_reverse_max']),
+                         (0.2, 0.9, 4.0))
+        self.assertEqual(e['non_quad_faces'], 12)
+
+    def test_p95_and_max_do_not_rank(self):
+        records = [spread_rec('wild', 11054, 0.1, 0.1, 5.0, 50.0, 5.0, 50.0),
+                   spread_rec('tame', 11054, 0.2, 0.2, 0.3, 0.4, 0.3, 0.4)]
+        ranked, _ = R.rank(records, band_pct=15.0)
+        self.assertEqual([e['trial'] for e in ranked], ['wild', 'tame'])
+
+    def test_spread_over_the_survivors(self):
+        ranked, _ = R.rank([spread_rec('a', 11054, 0.1, 0.1, 0.5, 2.0, 0.6, 3.0),
+                            spread_rec('b', 11054, 0.2, 0.2, 0.7, 4.0, 0.8, 5.0),
+                            spread_rec('c', 11054, 0.3, 0.3, 0.9, 9.0, 1.0, 6.0),
+                            spread_rec('out', 50000, 0.0, 0.0, 99.0, 99.0, 99.0, 99.0)],
+                           band_pct=15.0)
+        sp = R.spread(ranked)
+        self.assertEqual(sp['fit_p95'], {'min': 0.5, 'median': 0.7, 'max': 0.9})
+        self.assertEqual(sp['fit_max'], {'min': 2.0, 'median': 4.0, 'max': 9.0})
+        self.assertEqual(sp['fit_reverse_p95'], {'min': 0.6, 'median': 0.8, 'max': 1.0})
+        self.assertEqual(sp['fit_reverse_max'], {'min': 3.0, 'median': 5.0, 'max': 6.0})
+        self.assertEqual(sp['combined_fit']['min'], 0.1)
+
+    def test_baseline_reports_p95_and_max(self):
+        s = spread_rec('x', 11054, 0.1, 0.2, 0.7, 3.1, 0.9, 4.0, non_quads=5)['score']
+        b = R.baseline_entry({'file': 'f', 'line': 1, 'score': s}, 15.0)
+        self.assertEqual((b['fit_p95'], b['fit_max'], b['fit_reverse_p95'],
+                          b['fit_reverse_max'], b['non_quad_faces']), (0.7, 3.1, 0.9, 4.0, 5))
+
+    def test_default_results_are_the_unsplit_sweeps(self):
+        self.assertEqual(R.DEFAULT_RESULTS,
+                         os.path.join('tuning_runs', 'unsplit', 'sweep_results.jsonl'))
+
+
 class Rank(unittest.TestCase):
     def test_ranks_survivors_by_combined_fit(self):
         records = [rec('a', 11054, 0.5, 0.5), rec('b', 11500, 0.1, 0.3),
@@ -252,6 +302,23 @@ class Cli(unittest.TestCase):
         (b,) = j['baselines']
         self.assertEqual((b['line'], b['gate']), (2, 'outside_band'))
         self.assertAlmostEqual(b['combined_fit'], 0.06)
+        self.assertEqual(set(j['spread']), {'combined_fit', 'fit_p95', 'fit_max',
+                                            'fit_reverse_p95', 'fit_reverse_max'})
+        self.assertEqual(j['spread']['fit_p95'], {'min': 0.1, 'median': 0.3, 'max': 0.5})
+
+    def test_table_shows_p95_and_max(self):
+        sweep = os.path.join(self.d.name, 'spread.jsonl')
+        write_jsonl(sweep, [spread_rec('a', 11054, 0.1, 0.2, 0.7123, 3.1234, 0.9123, 4.0123,
+                                       non_quads=12)])
+        code, out, err = run_main(['--results', sweep])
+        self.assertEqual(code, 0, err)
+        header = next(line for line in out.split('\n') if line.lstrip().startswith('rank '))
+        for col in ('fit_p95', 'fit_max', 'rev_p95', 'rev_max', 'nonq'):
+            self.assertIn(col, header)
+        row = next(line for line in out.split('\n') if re.match(r'^\s*1\s+a\s', line))
+        for v in ('0.7123', '3.1234', '0.9123', '4.0123', ' 12 '):
+            self.assertIn(v, row)
+        self.assertRegex(out, r'p95 and max over the 1 ranked')
 
     def test_json_is_deterministic(self):
         a, b = (os.path.join(self.d.name, n) for n in ('a.json', 'b.json'))

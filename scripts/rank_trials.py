@@ -20,7 +20,13 @@ Ties are exact unless --fit-decimals D rounds the combined fit to D decimals
 first. A trial recorded more than once (tune_params.py --rerun) is ranked once,
 from its last 'ok' record.
 
---results is tune_params.py's file (default tuning_runs/sweep_results.jsonl).
+Each trial's p95 and max of both distances, and its non-quad faces, are
+reported next to its mean; they do not rank. Their min, median and max over the
+ranked trials are reported too.
+
+--results is tune_params.py's file (default
+tuning_runs/unsplit/sweep_results.jsonl; M4.1's split sweep is
+tuning_runs/sweep_results.jsonl).
 --baseline names one line (from 1) of a file of score_remesh.py records, such
 as plan/baselines/m3_baseline.jsonl:2, M3's default-parameter baseline; it is
 put through the same steps and reported next to the winner. --json writes the
@@ -37,12 +43,20 @@ import argparse
 import json
 import math
 import os
+import statistics
 import sys
 
-# Bumped when a field of the --json output changes meaning
-RANKER_VERSION = 1
+# Bumped when a field of the --json output changes meaning (2: p95 and max of
+# both distances, non-quad faces and the survivors' spread, M4.3)
+RANKER_VERSION = 2
 
-DEFAULT_RESULTS = os.path.join('tuning_runs', 'sweep_results.jsonl')
+# M4.3's sweep of the unsplit CLI output; M4.1's split sweep is
+# tuning_runs/sweep_results.jsonl, kept for the record
+DEFAULT_RESULTS = os.path.join('tuning_runs', 'unsplit', 'sweep_results.jsonl')
+
+# Reported for every trial and baseline, and summarised over the survivors; they
+# do not rank
+SPREAD_FIELDS = ('combined_fit', 'fit_p95', 'fit_max', 'fit_reverse_p95', 'fit_reverse_max')
 DEFAULT_BAND = 15.0
 
 STATISTIC = 'mean(fit.mean, fit_reverse.mean)'
@@ -92,21 +106,37 @@ def latest(records):
     return [by_id[t] for t in order]
 
 
-def entry(r):
-    s = r['score']
+def metrics(s):
+    """The fields of a scorer record the ranking reports"""
     return {
-        'trial': r['trial'],
-        'params': r['params'],
-        'cli_flags': cli_flags(r['params']),
         'quads': s['quads']['candidate'],
         'delta_pct': s['quads']['delta_pct'],
+        'non_quad_faces': s['non_quad_faces']['candidate'],
         'combined_fit': combined_fit(s),
         'fit_mean': s['fit']['mean'],
+        'fit_p95': s['fit']['p95'],
+        'fit_max': s['fit']['max'],
         'fit_reverse_mean': s['fit_reverse']['mean'],
+        'fit_reverse_p95': s['fit_reverse']['p95'],
+        'fit_reverse_max': s['fit_reverse']['max'],
         'edge_length_cv': s['edge_length_cv']['candidate'],
         'cv_distance': cv_distance(s),
-        'output_sha256': r['cli']['output_sha256'],
     }
+
+
+def entry(r):
+    return dict({'trial': r['trial'], 'params': r['params'],
+                 'cli_flags': cli_flags(r['params'])},
+                **metrics(r['score']), output_sha256=r['cli']['output_sha256'])
+
+
+def spread(ranked):
+    """min, median and max of SPREAD_FIELDS over the ranked trials"""
+    out = {}
+    for k in SPREAD_FIELDS:
+        vs = [e[k] for e in ranked]
+        out[k] = {'min': min(vs), 'median': statistics.median(vs), 'max': max(vs)}
+    return out
 
 
 def rank(records, band_pct, fit_decimals=None):
@@ -165,14 +195,8 @@ def load_baseline(text):
 
 def baseline_entry(b, band_pct):
     s = b['score']
-    return {
-        'file': b['file'], 'line': b['line'], 'candidate': s['candidate'],
-        'gate': gate(s, band_pct),
-        'quads': s['quads']['candidate'], 'delta_pct': s['quads']['delta_pct'],
-        'combined_fit': combined_fit(s),
-        'fit_mean': s['fit']['mean'], 'fit_reverse_mean': s['fit_reverse']['mean'],
-        'edge_length_cv': s['edge_length_cv']['candidate'], 'cv_distance': cv_distance(s),
-    }
+    return dict({'file': b['file'], 'line': b['line'], 'candidate': s['candidate'],
+                 'gate': gate(s, band_pct)}, **metrics(s))
 
 
 def load_records(path):
@@ -199,13 +223,21 @@ def print_report(result, top):
           % (STATISTIC, '' if result['fit_decimals'] is None
              else ' rounded to %d decimals' % result['fit_decimals'], TIE_BREAK))
     print()
-    print('%4s  %-34s %7s %8s %9s %9s %9s %7s %7s'
-          % ('rank', 'trial', 'quads', 'delta%', 'combined', 'fit', 'fit_rev', 'cv', '|dcv|'))
+    print('%4s  %-34s %6s %7s %5s %8s %8s %8s %8s %8s %8s %8s %6s %6s'
+          % ('rank', 'trial', 'quads', 'delta%', 'nonq', 'combined', 'fit', 'fit_p95',
+             'fit_max', 'fit_rev', 'rev_p95', 'rev_max', 'cv', '|dcv|'))
     for e in result['ranked'][:top]:
-        print('%4d  %-34s %7d %+8.1f %9.4f %9.4f %9.4f %7.4f %7.4f'
-              % (e['rank'], e['trial'], e['quads'], e['delta_pct'], e['combined_fit'],
-                 e['fit_mean'], e['fit_reverse_mean'], e['edge_length_cv'], e['cv_distance']))
+        print('%4d  %-34s %6d %+7.1f %5d %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %6.4f %6.4f'
+              % (e['rank'], e['trial'], e['quads'], e['delta_pct'], e['non_quad_faces'],
+                 e['combined_fit'], e['fit_mean'], e['fit_p95'], e['fit_max'],
+                 e['fit_reverse_mean'], e['fit_reverse_p95'], e['fit_reverse_max'],
+                 e['edge_length_cv'], e['cv_distance']))
     win = result['ranked'][0]
+    print()
+    print('p95 and max over the %d ranked trials (min / median / max):' % c['ranked'])
+    for k in SPREAD_FIELDS:
+        sp = result['spread'][k]
+        print('  %-16s %8.4f %8.4f %8.4f' % (k, sp['min'], sp['median'], sp['max']))
     print()
     print('winner: %s' % win['trial'])
     print('  autoremesher-cli %s' % win['cli_flags'])
@@ -292,6 +324,7 @@ def main(argv=None):
                              if r['trial'] == some['trial'] and r['score']),
         'counts': counts(records, ranked, excluded),
         'ranked': ranked,
+        'spread': spread(ranked),
         'excluded': excluded,
         'baselines': [baseline_entry(b, args.band) for b in baselines],
     }
