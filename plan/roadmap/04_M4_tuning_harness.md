@@ -111,6 +111,20 @@ rebaselined (M3's Task 3), rerun both:
   to the old (reverted) winner and to M3's new unsplit baseline, and the
   p95/max spread across the gated survivors.
 
+> **Done in M4.3** (`HANDOFF_M4_TASK3.md`), pending Giacomo's visual check.
+> `tune_params.py` is re-centred on target-quads 11054 and writes to
+> `tuning_runs/unsplit/`; `rank_trials.py` (ranker_version 2) reports each
+> trial's p95/max fit and non-quad count, and their spread over the survivors.
+> 127 trials, all ok, none degenerate; ranking `tuning_runs/unsplit/ranking.json`
+> at ±15 % (75 survive; the winner is the same from ±10 % to ±20 %). Winner:
+> `tq30000_es1.25_se90_sn0_ad0.5_an1`, 11,065 quads (+0.1 %), combined fit
+> 0.0694. **M4.1's findings did not carry over:** unsplit, the core undershoots
+> its target (11054 gives 7,913 quads; the defaults reach the target's count at
+> about 15,500), and edge-scaling helps only up to about 1.25–1.5 at a matched
+> count — the fit is flat from 1.25 to 2 (0.069–0.071), against 0.21 for M4.2's
+> es 3.5 split winner. M4.2's winner scores 2.2–4× worse than this one on every
+> fit statistic (3.0× on combined fit), which matches Giacomo's visual verdict.
+
 ## Exit criteria
 
 - A ranked list of trials exists, with the best trial's combined score
@@ -131,5 +145,15 @@ rebaselined (M3's Task 3), rerun both:
   > line 3. A trial does not count as meeting this criterion until a human
   > has visually compared it against `quad-remeshed.obj` — M4.2's prior
   > winner met the numeric criterion but failed that comparison.
+
+  > **M4.3 measured:** M3.3's rebaseline records the defaults at
+  > `--target-quads 11054` (`m3_baseline_unsplit.jsonl` line 3), but unsplit
+  > that lands at 7,913 quads (−28.4 %), outside D5's gate. The like-for-like
+  > reference is therefore the sweep's defaults-only trial nearest the
+  > target's count, `tq15500_es1_se90_sn0_ad1_an1` (10,901 quads, −1.4 %,
+  > combined fit 0.0974). The winner is 0.71× that (29 % lower; `fit` −21 %,
+  > `fit_reverse` −34 %, both p95s lower) and 0.50× line 3. CTest
+  > (`test_rank_trials`) checks both. The numeric part holds; the visual
+  > comparison is Giacomo's (`HANDOFF_M4_TASK3.md`, "Visual check").
 - The winning parameter set is recorded in this phase's handoff for M5 to
   consume directly.
