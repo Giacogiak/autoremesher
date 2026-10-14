@@ -59,6 +59,18 @@ explicit test case covering it (M3.1/M3.2 only ever ran inputs where this
 happened to come out at 0, not a test that pins it). If it does miscount,
 fix it.
 
+> **Done in M3.3** (`HANDOFF_M3_TASK3.md`). M3.2's file is unchanged; the
+> unsplit records are in `plan/baselines/m3_baseline_unsplit.jsonl`: line 1
+> the self-score of `quad-remeshed.obj` (exactly zero, identical to M3.2's
+> line 1), line 2 the **baseline** (CLI defaults, unsplit: 25,932 quads +
+> 56 non-quads, +134.6 %; edge CV 0.3691, Δ −0.1861; fit mean 0.0768, p95
+> 0.240; fit_reverse mean 0.0495; 0 degenerate), line 3 `--target-quads
+> 11054` for reference (7,913 quads + 171 non-quads, −28.4 %), line 4 the
+> self-score of the unsplit default output (exactly zero, non-quads
+> included). The degenerate rule was already right: it tests 4-gons only.
+> CTest `test_score_remesh` now pins that a valid triangle and 5-, 6- and
+> 7-gon are not counted; `test_tune_params` reproduces line 3 to every digit.
+
 ## Exit criteria
 
 - Self-score sanity check passes (all deltas zero).
@@ -69,3 +81,6 @@ fix it.
   > must produce is now against the CLI's unsplit default, per Task 3 above
   > — M3.2's split-mesh baseline is kept for the record but is no longer the
   > one M4 compares against.
+  >
+  > **Met in M3.3:** `plan/baselines/m3_baseline_unsplit.jsonl` line 2,
+  > recorded in `HANDOFF_M3_TASK3.md`.

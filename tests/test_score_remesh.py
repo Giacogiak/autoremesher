@@ -244,6 +244,36 @@ class Metrics(Tmp):
         self.assertAlmostEqual(r['edge_length_cv']['candidate'], L.std() / L.mean(),
                                places=12)
 
+    def test_degenerate_rule_spares_valid_polygons(self):
+        # M3.3: the CLI's unsplit output has triangles and 5- to 7-gons. Each has
+        # its 3, 5, 6 or 7 distinct indices, none repeated, so none is a
+        # degenerate quad -- "fewer than 4 distinct indices" applies to quads only
+        V, F = grid(3, 1)
+        V = V + [(4.0, 0.0, 0.0), (4.0, 1.0, 0.0), (0.5, -1.0, 0.0), (1.5, -1.5, 0.0),
+                 (2.5, -1.0, 0.0), (1.5, 2.0, 0.0), (2.5, 2.5, 0.0)]
+        F = F + [[3, 8, 7],                   # triangle
+                 [0, 10, 11, 12, 2, 1],       # hexagon
+                 [4, 5, 6, 7, 9],             # pentagon
+                 [9, 7, 6, 5, 4, 13, 14]]     # 7-gon
+        r = self.score((V, F), grid(3, 1))
+        self.assertEqual(r['non_quad_faces']['candidate'], 4)
+        self.assertEqual(r['quads']['candidate'], 3)
+        self.assertEqual(r['degenerate_quads'], {'candidate': 0, 'target': 0, 'delta': 0})
+        # and a degenerate quad next to them is still counted, alone
+        F[1] = [F[1][0], F[1][1], F[1][1], F[1][3]]
+        r = self.score((V, F), grid(3, 1))
+        self.assertEqual(r['degenerate_quads']['candidate'], 1)
+
+    def test_self_score_with_polygons_is_zero(self):
+        # the unsplit CLI output scored against itself: non-quads included
+        V, F = grid(3, 1)
+        V = V + [(4.0, 0.0, 0.0), (0.5, -1.0, 0.0), (1.5, -1.5, 0.0), (2.5, -1.0, 0.0)]
+        F = F + [[3, 8, 7], [0, 9, 10, 11, 2, 1]]
+        r = self.score((V, F), (V, F))
+        self.assertEqual(self_score_mismatches(r), [])
+        self.assertEqual(r['non_quad_faces'], {'candidate': 2, 'target': 2})
+        self.assertEqual(r['degenerate_quads']['candidate'], 0)
+
     def test_fit_offset_plane(self):
         # candidate floats 0.5 above the target plane and overhangs it by 1 in x
         r = self.score(grid(3, 2, z=0.5), grid(2, 2))

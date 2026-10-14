@@ -20,7 +20,9 @@ reported for the candidate and the target, with the candidate's delta:
                      registration step.
   fit_reverse        the same, from each target vertex to the candidate's surface;
                      catches a candidate that covers only part of the target
-  degenerate_quads   quads that revisit a vertex (fewer than 4 distinct indices)
+  degenerate_quads   quads that revisit a vertex (fewer than 4 distinct indices);
+                     only 4-gons are tested, so a valid triangle or 5- to 7-gon
+                     of the CLI's unsplit output never counts
 
 A self-score (a mesh against itself) gives 0 for every delta and every distance.
 Only vertices that some face uses are measured. Faces that are not quads are
@@ -220,7 +222,8 @@ def edge_length_cv(mesh):
 
 
 def degenerate_quads(mesh):
-    """Quads with fewer than 4 distinct vertex indices"""
+    """Quads with fewer than 4 distinct vertex indices. Faces of any other size
+    are not tested"""
     Q = np.sort(mesh.of_size(4), axis=1)
     return int((Q[:, 1:] == Q[:, :-1]).any(axis=1).sum())
 

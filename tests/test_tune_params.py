@@ -31,6 +31,7 @@ REAL_CLI = os.environ.get('AUTOREMESHER_CLI', '')
 SOURCE_OBJ = os.environ.get('AUTOREMESHER_SOURCE_OBJ', os.path.join(ROOT, 'source.obj'))
 TARGET_OBJ = os.environ.get('AUTOREMESHER_TARGET_OBJ', os.path.join(ROOT, 'quad-remeshed.obj'))
 BASELINE = os.path.join(ROOT, 'plan', 'baselines', 'm3_baseline.jsonl')
+UNSPLIT_BASELINE = os.path.join(ROOT, 'plan', 'baselines', 'm3_baseline_unsplit.jsonl')
 
 # Stands in for autoremesher-cli. It logs its argv, then writes a strip of
 # target-quads quads at height edge-scaling - 1, and a report if asked. Some
@@ -365,7 +366,8 @@ class RealCli(unittest.TestCase):
         # the baseline file; the harness must give the same score to every digit.
         # That run's CLI split every face into quads (D6); since D6's reversal
         # (M2.4) it takes --split-to-quads to do so, so the CLI is wrapped to
-        # add it until M3.3 re-records the baseline on unsplit output
+        # add it. M3.3 re-recorded the baseline on unsplit output in its own
+        # file (next test); this one keeps the split path reproducing M3.2's
         with tempfile.TemporaryDirectory() as d:
             cli = os.path.join(d, 'split-cli')
             with open(cli, 'w') as f:
@@ -389,6 +391,32 @@ class RealCli(unittest.TestCase):
             del got[k], ref[k]
         self.assertEqual(got, ref)
         self.assertEqual(r['cli']['output_sha256'][:8], 'bc40aff3')
+
+    @unittest.skipUnless(os.path.exists(UNSPLIT_BASELINE), 'needs ' + UNSPLIT_BASELINE)
+    def test_reproduces_m3s_unsplit_reference_trial(self):
+        # M3.3 recorded the unsplit CLI's defaults at the target's quad count
+        # (--target-quads 11054) as line 3 of the unsplit baseline file; the
+        # harness, running the CLI unwrapped, must give the same score to
+        # every digit
+        with tempfile.TemporaryDirectory() as d:
+            out = os.path.join(d, 'sweep.jsonl')
+            err = io.StringIO()
+            with redirect_stderr(err):
+                code = T.main(['grid', '--cli', REAL_CLI, '--source', SOURCE_OBJ,
+                               '--target', TARGET_OBJ, '--out', out,
+                               '--work', os.path.join(d, 'trials'),
+                               '--vary', 'target-quads=11054', '--center', 'adaptivity=1'])
+            self.assertEqual(code, 0, err.getvalue())
+            (r,) = read_jsonl(out)
+        self.assertEqual(r['status'], 'ok', r)
+        with open(UNSPLIT_BASELINE) as f:
+            ref = json.loads(f.readlines()[2])
+        got = dict(r['score'])
+        for k in ('candidate', 'target'):
+            del got[k], ref[k]
+        self.assertEqual(got, ref)
+        self.assertEqual(got['non_quad_faces']['candidate'], 171)
+        self.assertEqual(r['cli']['output_sha256'][:8], '7bfeaed5')
 
 
 if __name__ == '__main__':
