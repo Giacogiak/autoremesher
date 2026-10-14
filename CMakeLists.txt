@@ -137,8 +137,31 @@ set_tests_properties(test_core PROPERTIES TIMEOUT 600 SKIP_RETURN_CODE 77)
 add_library(autoremesher_cli_options STATIC src/cli/cli_options.cpp)
 target_include_directories(autoremesher_cli_options PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-add_executable(autoremesher-cli src/cli/main.cpp src/cli/obj_io.cpp)
-target_link_libraries(autoremesher-cli PRIVATE autoremesher_core autoremesher_cli_options)
+# The OBJ reader and writer.  The writer starts its files with the GUI's own
+# header lines, so it takes the GUI's product name, version and homepage from
+# autoremesher.pro, as the GUI does.
+file(READ ${CMAKE_CURRENT_SOURCE_DIR}/autoremesher.pro AUTOREMESHER_PRO)
+string(REGEX MATCH "QMAKE_TARGET_PRODUCT = ([^\n]+)" _ "${AUTOREMESHER_PRO}")
+set(AUTOREMESHER_APP_NAME "${CMAKE_MATCH_1}")
+string(REGEX MATCH "HUMAN_VERSION = \"([^\"]+)\"" _ "${AUTOREMESHER_PRO}")
+set(AUTOREMESHER_APP_HUMAN_VER "${CMAKE_MATCH_1}")
+string(REGEX MATCH "HOMEPAGE_URL = \"([^\"]+)\"" _ "${AUTOREMESHER_PRO}")
+set(AUTOREMESHER_APP_HOMEPAGE_URL "${CMAKE_MATCH_1}")
+if (NOT AUTOREMESHER_APP_NAME OR NOT AUTOREMESHER_APP_HUMAN_VER OR NOT AUTOREMESHER_APP_HOMEPAGE_URL)
+  message(FATAL_ERROR "cannot read the product name, version or homepage from autoremesher.pro")
+endif()
+add_library(autoremesher_cli_obj_io STATIC src/cli/obj_io.cpp)
+target_include_directories(autoremesher_cli_obj_io PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+# For autoremesher_core_api.h only: the reader and writer call nothing in it.
+target_include_directories(autoremesher_cli_obj_io PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_compile_definitions(autoremesher_cli_obj_io PUBLIC
+  "AUTOREMESHER_APP_NAME=\"${AUTOREMESHER_APP_NAME}\""
+  "AUTOREMESHER_APP_HUMAN_VER=\"${AUTOREMESHER_APP_HUMAN_VER}\""
+  "AUTOREMESHER_APP_HOMEPAGE_URL=\"${AUTOREMESHER_APP_HOMEPAGE_URL}\"")
+
+add_executable(autoremesher-cli src/cli/main.cpp)
+target_link_libraries(autoremesher-cli PRIVATE autoremesher_core autoremesher_cli_options
+  autoremesher_cli_obj_io)
 
 # Exit criterion of M2: the executable must not depend on Qt either.
 add_test(NAME autoremesher_cli_no_qt
@@ -149,6 +172,13 @@ add_test(NAME autoremesher_cli_no_qt
 add_executable(test_cli_options tests/test_cli_options.cpp)
 target_link_libraries(test_cli_options PRIVATE autoremesher_cli_options)
 add_test(NAME test_cli_options COMMAND test_cli_options)
+
+add_executable(test_obj_io tests/test_obj_io.cpp)
+target_link_libraries(test_obj_io PRIVATE autoremesher_cli_obj_io)
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test_obj_io_scratch)
+# source.obj's own checks are skipped inside the test where the file is missing.
+add_test(NAME test_obj_io
+  COMMAND test_obj_io ${CMAKE_CURRENT_BINARY_DIR}/test_obj_io_scratch ${AUTOREMESHER_SOURCE_OBJ})
 
 # The executable end to end, on a small synthetic sphere.
 add_executable(test_cli tests/test_cli.cpp)

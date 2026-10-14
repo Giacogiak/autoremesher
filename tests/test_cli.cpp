@@ -120,6 +120,10 @@ int main(int argc, char** argv)
     // The output: a non-empty polygon mesh, mostly quads, on the unit sphere.
     std::ifstream in(output);
     CHECK(in.good());
+    // It starts with the GUI's own header.
+    std::string firstLine;
+    std::getline(in, firstLine);
+    CHECK(0 == firstLine.compare(0, 15, "# AutoRemesher "));
     size_t vertexCount = 0, faceCount = 0, quadCount = 0, badIndices = 0, offSphere = 0;
     std::vector<size_t> faceIndices;
     std::string line;
@@ -181,6 +185,11 @@ int main(int argc, char** argv)
     CHECK(1 == run("-i '" + scratch + "/missing.obj' -o '" + unwritten + "'"));
     CHECK(!exists(unwritten));
     CHECK(1 == run("-i '" + input + "' -o '" + scratch + "/no/such/dir/out.obj' --target-quads 300"));
+    // An input the reader refuses: face 2 names a vertex that does not exist.
+    const std::string bad = scratch + "/bad_index.obj";
+    std::ofstream(bad) << "v 0 0 0\nv 1 0 0\nv 1 1 0\nv 0 1 0\nf 1 2 3\nf 1 3 5\n";
+    CHECK(1 == run("-i '" + bad + "' -o '" + unwritten + "'"));
+    CHECK(!exists(unwritten));
 
     if (0 != failures) {
         std::fprintf(stderr, "%d check(s) failed\n", failures);

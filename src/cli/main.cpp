@@ -64,8 +64,9 @@ int main(int argc, char** argv)
     autoremesher_core_weld_result welded;
     if (!autoremesher_core_weld(rawVertices.data(), rawVertices.size() / 3,
             rawTriangles.data(), rawTriangles.size() / 3, &welded)) {
+        // readObj has already refused bad indices and non-finite coordinates.
         return fail("cannot weld " + options.inputPath
-            + " (a face index out of range, or a coordinate that is not finite?)");
+            + " (a coordinate beyond about 9.2e13, or out of memory?)");
     }
     autoremesher_core* handle = autoremesher_core_create(welded.vertices, welded.vertex_count,
         welded.triangle_indices, welded.triangle_count);

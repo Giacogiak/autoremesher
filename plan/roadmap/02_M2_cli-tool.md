@@ -33,6 +33,24 @@ fail), and a writer emitting plain `v x y z` / `f a b c d` lines, matching
 `MainWindow::saveMeshToFile`'s own format (`mainwindow.cpp:1026`) so outputs
 are diff-comparable with anything the GUI produces.
 
+> **M2.2 measured:** `src/cli/obj_io.{h,cpp}` (static library
+> `autoremesher_cli_obj_io`, CTest `test_obj_io`). The reader also takes
+> `v/vt/vn` corners, negative indices, CRLF and polygons (fanned, as
+> tinyobjloader does for convex ones), and refuses with file:line a
+> non-finite or missing coordinate, a bad or missing vertex index, a face of
+> under 3 corners, or a file with no faces. It reads `source.obj` (97,400
+> vertices, 175,566 triangles) in about 0.04 s. The writer's output is
+> byte-identical to what `saveMeshToFile` writes: its two header lines
+> (`# AutoRemesher 1.2.0`, `# https://autoremesher.dust3d.org/`, read from
+> `autoremesher.pro` by CMake) and QTextStream's number format. That format
+> is **not** plain `%g`: Qt writes `-0` as `0` and rounds exact ties away
+> from zero. This was checked against the real Qt 6.11 `QTextStream` on
+> 200,004 values, with 0 mismatches (`tests/manual/qtextstream_probe.cpp`).
+> "Diff-comparable" holds for the **format** only. The GUI's geometry differs:
+> it does not weld (D2), and tinyobjloader reads coordinates as `float`. On
+> `source.obj` at 11,054 target quads, float-rounded input alone moves the
+> result from 8,084 to 8,503 faces. See `HANDOFF_M2_TASK2.md`.
+
 ## Task 3 — progress + report output
 
 Wire the C API's progress callback to print `status NN%` lines to stdout, and
