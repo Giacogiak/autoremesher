@@ -43,8 +43,29 @@ baseline score this plan is trying to improve on in M4.
 > `plan/baselines/m3_baseline.jsonl`: line 1 the self-score, line 2 the
 > defaults baseline, line 3 `--target-quads 2764` for reference.
 
+## Task 3 — rebaseline against the unsplit CLI output (D6 reversed)
+
+M2's Task 4 reverts the CLI's default from the split (all-quad) output back
+to the natural polygon mesh. M3.2's baseline (`plan/baselines/m3_baseline.jsonl`
+line 2) was measured on the **split** mesh and no longer reflects what the
+CLI produces by default — re-run the self-score sanity check and the
+default-parameter baseline exactly as M3.2 did, this time against the
+unsplit output, and record both.
+
+Also confirm the degenerate-quad rule ("fewer than 4 distinct indices") does
+not miscount a valid triangle or pentagon as degenerate — it should not, since
+a triangle/pentagon has `3`/`5` distinct indices, none repeated, but add an
+explicit test case covering it (M3.1/M3.2 only ever ran inputs where this
+happened to come out at 0, not a test that pins it). If it does miscount,
+fix it.
+
 ## Exit criteria
 
 - Self-score sanity check passes (all deltas zero).
 - A documented baseline score exists for the CLI's default-parameter output,
   recorded in this phase's handoff, to compare M4's tuned result against.
+
+  > **Superseded by D6's reversal (2026-10-15):** the baseline this phase
+  > must produce is now against the CLI's unsplit default, per Task 3 above
+  > — M3.2's split-mesh baseline is kept for the record but is no longer the
+  > one M4 compares against.

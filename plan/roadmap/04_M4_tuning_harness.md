@@ -78,6 +78,39 @@ that motivated it).
 > (+10.2 %), 5.6× better than the default parameters at the target's quad
 > count (exit criterion 1, as reworded below).
 
+## Task 3 — rerun the sweep and ranking on the unsplit CLI output (D6 reversed)
+
+M4.1/M4.2's sweep and ranking ran against the CLI's old split-to-quads
+default. Giacomo visually reviewed M4.2's winner against `quad-remeshed.obj`
+and judged it messy, overly dense, and deformed in several zones — despite
+it scoring best on every one of M3's numeric metrics (mean, rms, p95, max
+fit) across all 90 trials swept. The metrics did not catch this; see D6 in
+`plan/01_decisions.md`. With the split reverted (M2's Task 4) and M3
+rebaselined (M3's Task 3), rerun both:
+
+- **Re-run `tune_params.py`** against the natural (unsplit) CLI output.
+  Re-centre `--target-quads` back on the target's actual 11,054 quads — the
+  ≈4× split-compensation centring from M4.1 no longer applies. Use ranges
+  close to this file's original suggestion, {8000, 9500, 11054, 12500,
+  14000}, and treat M4.1's edge-scaling/sharp-edge findings as provisional
+  only: they were measured under the split and may not hold without it.
+  Re-derive which parameters matter most from fresh one-at-a-time trials
+  before committing to a combined grid.
+- **Re-run `rank_trials.py`** with the same D5 procedure (degenerate
+  disqualification, quad-count gate, fit-primary ranking, CV tie-break to
+  the target's value), but report each surviving trial's p95 and max fit
+  alongside its mean in the ranking output, so a reviewer can see the spread
+  before opening a viewer.
+- **Mandatory visual check, up front this time:** before reporting this
+  task done, set `needsHumanCheck: true` and name what to look for —
+  compare the new winner's edge flow and overall shape against
+  `quad-remeshed.obj`, not just its numeric score. M4.2's winner won on
+  every metric and still failed visual review, so this task must not claim
+  success on numbers alone.
+- Record in the handoff: the new winner and its parameters, how it compares
+  to the old (reverted) winner and to M3's new unsplit baseline, and the
+  p95/max spread across the gated survivors.
+
 ## Exit criteria
 
 - A ranked list of trials exists, with the best trial's combined score
@@ -90,5 +123,13 @@ that motivated it).
   > quads, +841 %) falls outside D5's quad-count gate, so it is not a fair
   > comparison: on fit alone it beats every trial near the target's count. See
   > `HANDOFF_M4_TASK2.md`.
+
+  > **Superseded by D6's reversal (2026-10-15):** M4.1/M4.2 ran against the
+  > split output and are kept for the record, but do not satisfy this
+  > criterion going forward. Task 3 reruns the sweep against the unsplit
+  > output and its reference baseline is M3's Task 3 rebaseline, not the old
+  > line 3. A trial does not count as meeting this criterion until a human
+  > has visually compared it against `quad-remeshed.obj` — M4.2's prior
+  > winner met the numeric criterion but failed that comparison.
 - The winning parameter set is recorded in this phase's handoff for M5 to
   consume directly.

@@ -161,10 +161,27 @@
 			"task": "Task 3 — progress + report output",
 			"convention": "h2",
 			"sharedCriteria": "## Exit criteria",
-			"phaseEnd": true,
 			"gate": "auto",
 			"gateReason": "no stop rule matched",
 			"handoff": "HANDOFF_M2_TASK3.md",
+			"verify": [
+				"tree-clean",
+				"new-commit",
+				"handoff",
+				"ci"
+			]
+		},
+		{
+			"id": "M2.4",
+			"title": "revert the mandatory quad-split (D6 reversed)",
+			"planFile": "plan/roadmap/02_M2_cli-tool.md",
+			"task": "Task 4 — revert the mandatory quad-split (D6 reversed)",
+			"convention": "h2",
+			"sharedCriteria": "## Exit criteria",
+			"phaseEnd": true,
+			"gate": "auto",
+			"gateReason": "no stop rule matched",
+			"handoff": "HANDOFF_M2_TASK4.md",
 			"verify": [
 				"tree-clean",
 				"new-commit",
@@ -196,10 +213,27 @@
 			"task": "Task 2 — sanity checks",
 			"convention": "h2",
 			"sharedCriteria": "## Exit criteria",
-			"phaseEnd": true,
 			"gate": "auto",
 			"gateReason": "no stop rule matched",
 			"handoff": "HANDOFF_M3_TASK2.md",
+			"verify": [
+				"tree-clean",
+				"new-commit",
+				"handoff",
+				"ci"
+			]
+		},
+		{
+			"id": "M3.3",
+			"title": "rebaseline against the unsplit CLI output (D6 reversed)",
+			"planFile": "plan/roadmap/03_M3_scoring_script.md",
+			"task": "Task 3 — rebaseline against the unsplit CLI output (D6 reversed)",
+			"convention": "h2",
+			"sharedCriteria": "## Exit criteria",
+			"phaseEnd": true,
+			"gate": "auto",
+			"gateReason": "no stop rule matched",
+			"handoff": "HANDOFF_M3_TASK3.md",
 			"verify": [
 				"tree-clean",
 				"new-commit",
@@ -215,7 +249,7 @@
 			"convention": "h2",
 			"sharedCriteria": "## Exit criteria",
 			"gate": "auto",
-			"gateReason": "no stop rule matched (kept from the previous manifest)",
+			"gateReason": "no stop rule matched",
 			"handoff": "HANDOFF_M4_TASK1.md",
 			"verify": [
 				"tree-clean",
@@ -231,10 +265,27 @@
 			"task": "Task 2 — ranking",
 			"convention": "h2",
 			"sharedCriteria": "## Exit criteria",
+			"gate": "auto",
+			"gateReason": "no stop rule matched",
+			"handoff": "HANDOFF_M4_TASK2.md",
+			"verify": [
+				"tree-clean",
+				"new-commit",
+				"handoff",
+				"ci"
+			]
+		},
+		{
+			"id": "M4.3",
+			"title": "rerun the sweep and ranking on the unsplit CLI output (D6 reversed)",
+			"planFile": "plan/roadmap/04_M4_tuning_harness.md",
+			"task": "Task 3 — rerun the sweep and ranking on the unsplit CLI output (D6 reversed)",
+			"convention": "h2",
+			"sharedCriteria": "## Exit criteria",
 			"phaseEnd": true,
 			"gate": "auto",
-			"gateReason": "no stop rule matched (kept from the previous manifest)",
-			"handoff": "HANDOFF_M4_TASK2.md",
+			"gateReason": "no stop rule matched",
+			"handoff": "HANDOFF_M4_TASK3.md",
 			"verify": [
 				"tree-clean",
 				"new-commit",

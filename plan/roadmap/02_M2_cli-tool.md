@@ -84,15 +84,42 @@ consistent report format regardless of which tool produced it.
 > core's own counts go to stderr as one `remeshed to …` line. See
 > `HANDOFF_M2_TASK3.md`.
 
+## Task 4 — revert the mandatory quad-split (D6 reversed)
+
+**D6 is reverted** — see `plan/01_decisions.md`. Visual review of M4's
+winning trial showed the mandatory post-remesh split
+(`autoremesher_core_split_into_quads()`, called unconditionally since M2.3)
+produces a messy, overly dense topology: it is one Catmull–Clark-style step
+applied to *every* face, including faces that were already valid quads,
+quadrupling the face count and breaking each quad's clean edge flow into a
+4-quad pinwheel around a centroid, with the new centroid/midpoint vertices
+sitting slightly inside the true surface rather than on it.
+
+Change `autoremesher-cli` so it does **not** call the split by default.
+Decide and document how the split stays reachable, if at all (an opt-in
+flag such as `--split-to-quads`, or simply leaving it unexposed — nothing
+in this plan calls for forcing pure-quad output anymore). The library
+function itself is unchanged; only the CLI's default path changes. Output
+reverts to the natural polygon mesh (quads plus the core's own few
+triangles/pentagons), reported via the existing non-quad-count line — no new
+reporting code should be needed. Update the CLI's help text and this file's
+Exit criteria (below) to match.
+
 ## Exit criteria
 
 - `./autoremesher-cli -i source.obj -o /tmp/out.obj --target-quads 11054`
   runs to completion with no Qt/X11/display dependency at all (verify with
   `ldd` and by running under `QT_QPA_PLATFORM=offscreen`-free environment, or
   simply confirm no `libQt*` in `ldd` output).
-- Output OBJ is all-quad, non-empty, and vertex positions sit within
-  `source.obj`'s bounding box (x ∈ [-67.63, 118.88], y ∈ [-38.89, 37.80],
-  z ∈ [-39.88, 47.87], ±a small margin).
+- Output OBJ is a non-empty polygon mesh, mostly quads (the core's own
+  ratio — ≈98% on `source.obj`), every face index valid, and vertex
+  positions sit within `source.obj`'s bounding box (x ∈ [-67.63, 118.88],
+  y ∈ [-38.89, 37.80], z ∈ [-39.88, 47.87], ±a small margin).
+
+  > **Superseded by D6's reversal (2026-10-15):** this replaces the
+  > "M2.3 (phase end)" all-quad reading below, which only held while D6's
+  > split was mandatory. Task 4 is now the phase's last task and carries
+  > this criterion.
 
 > **M2.1 measured (correction to the second bullet):** the output is **not
 > all-quad**, and cannot be with the core as it is. `QuadExtractor` emits 3-
