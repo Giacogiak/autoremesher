@@ -19,6 +19,15 @@ one per tuning trial in M4):
   distinct indices — mirrors how the sibling Instant Meshes project's own
   scorer treated this case).
 
+> **Implemented in M3.1** (`HANDOFF_M3_TASK1.md`): `score_remesh.py CANDIDATE
+> TARGET [--out runs.jsonl] [--samples N] [--seed S]`. The spatial fit measures
+> every referenced candidate vertex to the exact nearest point of the target's
+> triangulated quads (not just the nearest target vertex). It also reports the
+> reverse direction, `fit_reverse` (target vertices to the candidate's surface),
+> which this list does not ask for: a candidate covering only part of the
+> target scores 0 one way. The target's quad count is read from the file, not
+> hard-coded. Tested by CTest `test_score_remesh`.
+
 ## Task 2 — sanity checks
 
 Running the script on `quad-remeshed.obj` scored against itself must report

@@ -202,3 +202,16 @@ file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test_cli_scratch)
 add_test(NAME test_cli
   COMMAND test_cli $<TARGET_FILE:autoremesher-cli> ${CMAKE_CURRENT_BINARY_DIR}/test_cli_scratch)
 set_tests_properties(test_cli PROPERTIES TIMEOUT 300)
+
+# M3's scorer, scripts/score_remesh.py, on synthetic meshes, and a self-score of
+# the Rhino target, quad-remeshed.obj, which is skipped where the file is missing
+# (it is not in git either). The script needs numpy and scipy.
+find_package(Python3 COMPONENTS Interpreter)
+if (Python3_Interpreter_FOUND)
+  add_test(NAME test_score_remesh
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_score_remesh.py)
+  set_tests_properties(test_score_remesh PROPERTIES TIMEOUT 300
+    ENVIRONMENT "AUTOREMESHER_TARGET_OBJ=${CMAKE_CURRENT_SOURCE_DIR}/quad-remeshed.obj")
+else()
+  message(WARNING "No Python 3 interpreter found; test_score_remesh will not run")
+endif()
