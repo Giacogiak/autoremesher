@@ -55,3 +55,6 @@ __pycache__/
 tuning_runs/trials/
 # M4.3 unsplit sweep trials (tuning_runs/unsplit/sweep_results.jsonl is kept)
 tuning_runs/unsplit/trials/
+# csharp-demo: dotnet build/run outputs when run in place (CMake builds it into build/)
+csharp-demo/bin/
+csharp-demo/tests/bin/

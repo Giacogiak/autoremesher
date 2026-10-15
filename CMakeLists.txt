@@ -226,3 +226,40 @@ if (Python3_Interpreter_FOUND)
 else()
   message(WARNING "No Python 3 interpreter found; test_score_remesh, test_tune_params and test_rank_trials will not run")
 endif()
+
+# M5's C# P/Invoke demo, csharp-demo/, and its tests, built with the .NET SDK
+# into the build tree (no NuGet packages, so no network).  The tests load the
+# library CMake built, through $AUTOREMESHER_CORE_LIBRARY.
+find_program(DOTNET_EXECUTABLE dotnet)
+if (DOTNET_EXECUTABLE)
+  set(CSHARP_DEMO_ARTIFACTS ${CMAKE_CURRENT_BINARY_DIR}/csharp-demo)
+  set(CSHARP_DEMO_ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1 DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1)
+  # Always run: dotnet build is incremental and knows the sources, CMake does not.
+  add_custom_target(csharp_demo ALL
+    COMMAND ${CMAKE_COMMAND} -E env ${CSHARP_DEMO_ENV} ${DOTNET_EXECUTABLE} build
+      ${CMAKE_CURRENT_SOURCE_DIR}/csharp-demo/AutoRemesherDemo.csproj
+      -c Release --nologo -v quiet --artifacts-path ${CSHARP_DEMO_ARTIFACTS}
+    COMMAND ${CMAKE_COMMAND} -E env ${CSHARP_DEMO_ENV} ${DOTNET_EXECUTABLE} build
+      ${CMAKE_CURRENT_SOURCE_DIR}/csharp-demo/tests/AutoRemesherDemo.Tests.csproj
+      -c Release --nologo -v quiet --artifacts-path ${CSHARP_DEMO_ARTIFACTS}
+    COMMENT "Building csharp-demo with ${DOTNET_EXECUTABLE}"
+    VERBATIM)
+  set(CSHARP_DEMO_TESTS_DLL
+    ${CSHARP_DEMO_ARTIFACTS}/bin/AutoRemesherDemo.Tests/release/AutoRemesherDemo.Tests.dll)
+  file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/csharp_demo_scratch)
+  # The bindings, the OBJ reader and writer and the demo's command line, on
+  # small meshes.
+  add_test(NAME csharp_demo
+    COMMAND ${DOTNET_EXECUTABLE} ${CSHARP_DEMO_TESTS_DLL}
+      ${CMAKE_CURRENT_BINARY_DIR}/csharp_demo_scratch ${CMAKE_CURRENT_SOURCE_DIR})
+  # The demo with its defaults (M4.3's winner) on source.obj: about 17 s.
+  # Skipped where source.obj is missing.
+  add_test(NAME csharp_demo_source
+    COMMAND ${DOTNET_EXECUTABLE} ${CSHARP_DEMO_TESTS_DLL} --source
+      ${CMAKE_CURRENT_BINARY_DIR}/csharp_demo_scratch ${AUTOREMESHER_SOURCE_OBJ})
+  set_tests_properties(csharp_demo csharp_demo_source PROPERTIES TIMEOUT 300
+    ENVIRONMENT "AUTOREMESHER_CORE_LIBRARY=$<TARGET_FILE:autoremesher_core>;DOTNET_CLI_TELEMETRY_OPTOUT=1;DOTNET_NOLOGO=1")
+  set_tests_properties(csharp_demo_source PROPERTIES SKIP_RETURN_CODE 77)
+else()
+  message(WARNING "No dotnet found; csharp-demo will not be built or tested")
+endif()

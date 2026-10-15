@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The demo's tests, as a console app that exits non-zero on a failure (no test
+       framework, so no NuGet packages and no network).  CTest runs it; see
+       ../../CMakeLists.txt.  It compiles the demo's own sources, all but Program.cs. -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>AutoRemesherDemo.Tests</AssemblyName>
+    <RootNamespace>AutoRemesherDemo.Tests</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="../NativeMethods.cs" />
+    <Compile Include="../ObjIo.cs" />
+    <Compile Include="../Remesher.cs" />
+    <Compile Include="../Demo.cs" />
+  </ItemGroup>
+
+</Project>
