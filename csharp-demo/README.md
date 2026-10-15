@@ -74,3 +74,13 @@ CTest uses the first, with the library it just built.
 - `csharp_demo_source` (about 17 s, skipped without `source.obj`): the demo
   with its defaults on `source.obj`, checking the output's vertex, face and
   quad counts against M4.3's winner.
+
+`ctest -R test_csharp_parity` (`tests/test_csharp_parity.py`, M5.2) checks the
+demo against `autoremesher-cli`: both are run on the same inputs with the same
+settings, and their outputs must be byte-identical and identical to M3's
+scorer (`scripts/score_remesh.py`), both ways. It covers a sphere soup (three
+setting sets, one with `--split-to-quads`) and a quad box read from polygon
+faces (the winner, the split, and each setting moved alone) in about 2 s, then
+`source.obj` at M4.3's winner (about 35 s, skipped without the file), whose two
+outputs must also score the same against `quad-remeshed.obj`. It needs Python 3
+with numpy and scipy, like the scorer.

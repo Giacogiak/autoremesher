@@ -31,6 +31,16 @@ an algorithm difference, and must be run down before declaring this phase
 done — this is exactly the kind of gap the sibling Instant Meshes project's
 own M4.2 ("weld parity evidence") caught.
 
+> **Done in M5.2** (`HANDOFF_M5_TASK2.md`): parity holds, with no divergence
+> to run down. On `source.obj` at M4.3's winner, the demo and the CLI write
+> byte-identical files (sha256 `fdbaf07b…62e0f2`); M3's scorer gives an
+> all-zero score between them in both directions, and the same record for each
+> against `quad-remeshed.obj` (11,065 quads, fit mean 0.06528, fit_reverse mean
+> 0.07362). With `--split-to-quads` the two are byte-identical too (44,528
+> quads, sha256 `3e4d4375…a14e1c4`; measured once, not in CTest). CTest
+> `test_csharp_parity` pins it: 11 synthetic cases (sphere soup, quad box, every
+> setting moved, the split) and the `source.obj` case.
+
 ## Exit criteria
 
 - Parity confirmed on Linux (.NET + the native `.so`, e.g. via `dotnet run`

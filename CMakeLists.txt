@@ -260,6 +260,15 @@ if (DOTNET_EXECUTABLE)
   set_tests_properties(csharp_demo csharp_demo_source PROPERTIES TIMEOUT 300
     ENVIRONMENT "AUTOREMESHER_CORE_LIBRARY=$<TARGET_FILE:autoremesher_core>;DOTNET_CLI_TELEMETRY_OPTOUT=1;DOTNET_NOLOGO=1")
   set_tests_properties(csharp_demo_source PROPERTIES SKIP_RETURN_CODE 77)
+  # M5's parity check: the demo and autoremesher-cli on the same inputs and
+  # settings must write the same file, and M3's scorer must find the two
+  # identical. Synthetic meshes always; source.obj (about 35 s) where it exists.
+  if (Python3_Interpreter_FOUND)
+    add_test(NAME test_csharp_parity
+      COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_csharp_parity.py)
+    set_tests_properties(test_csharp_parity PROPERTIES TIMEOUT 600
+      ENVIRONMENT "AUTOREMESHER_CLI=$<TARGET_FILE:autoremesher-cli>;AUTOREMESHER_CSHARP_DEMO=${CSHARP_DEMO_ARTIFACTS}/bin/AutoRemesherDemo/release/AutoRemesherDemo.dll;AUTOREMESHER_CORE_LIBRARY=$<TARGET_FILE:autoremesher_core>;DOTNET=${DOTNET_EXECUTABLE};AUTOREMESHER_SOURCE_OBJ=${AUTOREMESHER_SOURCE_OBJ};AUTOREMESHER_TARGET_OBJ=${CMAKE_CURRENT_SOURCE_DIR}/quad-remeshed.obj")
+  endif()
 else()
   message(WARNING "No dotnet found; csharp-demo will not be built or tested")
 endif()
