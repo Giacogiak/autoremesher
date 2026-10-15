@@ -125,6 +125,21 @@ rebaselined (M3's Task 3), rerun both:
 > es 3.5 split winner. M4.2's winner scores 2.2–4× worse than this one on every
 > fit statistic (3.0× on combined fit), which matches Giacomo's visual verdict.
 
+> **Visually confirmed (Giacomo Forcina, 2026-10-15):** the winner is good —
+> clean, close to the input surface, only a couple of face-connectivity
+> errors. Accepted as this plan's milestone result; M5 builds on it.
+>
+> **Scope note, same review:** the Rhino target isn't just a quad remesh —
+> it reads as a feature-aware *retopology*, a geometric synthesis of the
+> model at a deliberately minimal quad density, the kind of edge flow a
+> human modeler would draw by hand. AutoRemesher's algorithm doesn't attempt
+> that; it remeshes to quads without re-interpreting the model's features
+> (consistent with M4.3 Open #4: no trial reproduced the target's concentric
+> loops around holes). Closing that gap would mean a different algorithm,
+> not a parameter choice, and is explicitly **out of this plan's scope**.
+> This plan's goal — tune AutoRemesher's own algorithm as close to the
+> target as it can go — is met by the winner above.
+
 ## Exit criteria
 
 - A ranked list of trials exists, with the best trial's combined score
